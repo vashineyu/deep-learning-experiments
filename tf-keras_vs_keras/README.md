@@ -59,3 +59,6 @@ k_optim = Adam(lr=0.001)
 model3.compile(loss = 'categorical_crossentropy', optimizer = k_optim, metrics=['acc'])
 ```
 ![Image of model3](/images/images_result3.png)
+
+<h4> Finally </h4>
+Well, seems that also model2 can be trained, the result still not as good as use Keras model. I am still finding what leads to this issue. <br>
