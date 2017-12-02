@@ -34,7 +34,7 @@ model1.compile(loss = 'categorical_crossentropy',
 2) tf.keras model with tf.train.optimizer
 ``` {python}
 def my_loss(y_true, y_pred):
-    return tf.nn.softmax_cross_entropy_with_logits(labels=y_true, logits=y_pred)
+    return tf.reduce_mean(-tf.reduce_sum(y_true * tf.log(y_pred)) )
 
 model2.compile(loss = my_loss, 
                optimizer = tf.train.AdamOptimizer(learning_rate=0.001), 
@@ -61,7 +61,5 @@ model3.compile(loss = 'categorical_crossentropy', optimizer = k_optim, metrics=[
 ```
 ![Image of model3](/images/images_result3.png)
 
-<h4> Finally </h4>
-Well, seems that also model2 can be trained, the result still not as good as use Keras model. I am still finding what leads to this issue. And if you find out the reason, please share with me :) <br>
-BTW, here only show 100 epochs, trained with ... like 250 epochs will get better result (closed to 0.9 or even 1 on validation set). <br>
+
 
