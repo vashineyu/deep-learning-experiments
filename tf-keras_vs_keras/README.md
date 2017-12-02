@@ -1,4 +1,4 @@
-# Using tf.keras
+<h2> Using tf.keras
 
 Many people might ask why we use tf.keras rather than using Keras? The reason is that ... <br>
 Keras itself is easy to use. However, when you want to "go deeper", e.g. modify the layer, mix losses, etc., you want finally find it is quite wasting time and difficult to manage it. <br>
