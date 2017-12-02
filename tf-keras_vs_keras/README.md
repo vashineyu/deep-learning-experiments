@@ -8,6 +8,7 @@ In sum, the advantage of using tf.keras
 1) Easy to switch/mix tensors. You can create your model layers with both TF way or Keras-layer way, modify your losses and optimizers.
 2) Training phase controller.
 3) Combine tf.data.Dataset -- super fast
+4) There are already good Callback functions in Keras. (you will not have to write ReduceLR, ModelCheckpoint, or something else.)
 
 -------
 <h4> Using the Fizz Buzz example to show the difference between tf.keras and Keras </h4>
