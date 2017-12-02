@@ -62,3 +62,4 @@ model3.compile(loss = 'categorical_crossentropy', optimizer = k_optim, metrics=[
 
 <h4> Finally </h4>
 Well, seems that also model2 can be trained, the result still not as good as use Keras model. I am still finding what leads to this issue. <br>
+And if you find out the reason, please share with me :) <br>
