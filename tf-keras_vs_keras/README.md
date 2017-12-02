@@ -28,7 +28,7 @@ model1.compile(loss = 'categorical_crossentropy',
                optimizer = my_optim, 
                metrics=['acc'])
 ```
-[Image of model1](/images_result1.png)
+![Image of model1](/images/images_result1.png)
 
 2) tf.keras model with tf.train.optimizer
 ``` {python}
@@ -39,7 +39,8 @@ model2.compile(loss = my_loss,
                optimizer = tf.train.AdamOptimizer(learning_rate=0.001), 
                metrics=['acc'])
 ```
-[Image of model2](/images_result2.png)
+![Image of model2](/images/images_result2.png)
+
 3) Keras model
 ``` {python}
 import keras
@@ -57,4 +58,4 @@ model3 = Model(inputs=[k_x_in], outputs=[m_out])
 k_optim = Adam(lr=0.001)
 model3.compile(loss = 'categorical_crossentropy', optimizer = k_optim, metrics=['acc'])
 ```
-[Image of model3](/images_result3.png)
+![Image of model3](/images/images_result3.png)
