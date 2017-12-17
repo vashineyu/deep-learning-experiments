@@ -4,4 +4,9 @@ In this tutorials, serveral interesting methods were includes
 2. mix the tensorflow and tf.keras
 3. Use tqdm to report the progress and performance
 
+4. (update) Add tensorflow callbacks
+  * model checkpoint
+  * reduce learning rate
+  * earlystopping
+
 ---
