@@ -13,9 +13,12 @@ However, in the original version, several changes I've made
 1. Convert it from theano backend to tensorflow backend
 2. From MNIST to CIFAR-10 dataset with the very simple network (to speed it up...)
 
-#### Keypoints
+#### Experiment setting
 1. Network structure: C.64 -> C.128 (w or w/o attention) -> C.256 -> D.10
 2. Experiment with add noise or not (with Gaussian noise for both training and testing set)
+
+#### Current conslusion
+We got a little bit better result than one without attention in no noise condition. Howver, in the add noise condition, we got a different result from original one (Dan Vatterott's result). We've to identify the reason.
 
 #### Results
 Training loss
@@ -28,4 +31,4 @@ Validation loss
 ![Image of validation loss](img/valid_loss.png)
 
 Validation accuracy
-![Image of validation accuracy](img/valid_accuracy.png)
+![Image of validation accuracy](img/valid_acc.png)
