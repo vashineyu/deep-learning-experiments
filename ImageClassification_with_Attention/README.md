@@ -19,13 +19,13 @@ However, in the original version, several changes I've made
 
 #### Results
 Training loss
-![Image of training loss](/img/train_loss.png)
+![Image of training loss](img/train_loss.png)
 
 Training accuracy
-![Image of training accuracy](/img/train_accuracy.png)
+![Image of training accuracy](img/train_accuracy.png)
 
 Validation loss
-![Image of validation loss](/img/valid_loss.png)
+![Image of validation loss](img/valid_loss.png)
 
 Validation accuracy
-![Image of validation accuracy](/img/valid_accuracy.png)
+![Image of validation accuracy](img/valid_accuracy.png)
