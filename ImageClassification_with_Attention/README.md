@@ -18,10 +18,14 @@ However, in the original version, several changes I've made
 2. Experiment with add noise or not (with Gaussian noise for both training and testing set)
 
 #### Results
-[!Image of training loss](/img/train_loss.png)
+Training loss
+![Image of training loss](/img/train_loss.png)
 
-[!Image of training accuracy](/img/train_accuracy.png)
+Training accuracy
+![Image of training accuracy](/img/train_accuracy.png)
 
-[!Image of validation loss](/img/valid_loss.png)
+Validation loss
+![Image of validation loss](/img/valid_loss.png)
 
-[!Image of validation accuracy](/img/valid_accuracy.png)
+Validation accuracy
+![Image of validation accuracy](/img/valid_accuracy.png)
