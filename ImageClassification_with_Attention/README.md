@@ -21,14 +21,10 @@ However, in the original version, several changes I've made
 We got a little bit better result than one without attention in no noise condition. Howver, in the add noise condition, we got a different result from original one (Dan Vatterott's result). We've to identify the reason.
 
 #### Results
-Training loss
 ![Image of training loss](img/train_loss.png)
 
-Training accuracy
 ![Image of training accuracy](img/train_accuracy.png)
 
-Validation loss
 ![Image of validation loss](img/valid_loss.png)
 
-Validation accuracy
 ![Image of validation accuracy](img/valid_acc.png)
