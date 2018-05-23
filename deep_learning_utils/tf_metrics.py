@@ -11,4 +11,4 @@ def f1sc_metrics(y_true, y_pred):
     
     recall = TP / (TP + FN)
     precision = TP / (TP + TP)
-    return 2 * precision * recall / (precision + recall)
+    return 2 * precision * recall / (precision + recall + 1e-8)
