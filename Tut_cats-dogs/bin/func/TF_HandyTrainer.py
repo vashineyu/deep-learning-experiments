@@ -1,12 +1,7 @@
 import tensorflow as tf
-import tensorflow.contrib.slim as slim
-import tensorflow.contrib.slim.nets as slimNet
-
-"""
-Description
-define your model here, can directly add new function of class of yourself.
-However, the output part should follow the model_key and metric_history format
-"""
+import numpy as np
+import pandas as pd
+from tqdm import tqdm
 
 def create_model(FLAGS):
     # create a transfer learning model
