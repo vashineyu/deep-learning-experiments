@@ -72,5 +72,3 @@ def create_model(FLAGS):
     metric_history = {k: {'train':[], 'valid':[]} for k in list(model_key['metrics'].keys())}
     
     return model_key, metric_history
-
-model_ops, metric_history = create_model(FLAGS)

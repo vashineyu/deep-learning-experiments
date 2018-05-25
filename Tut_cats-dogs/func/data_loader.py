@@ -7,6 +7,22 @@ import cv2
 import random
 import tensorflow as tf
 
+"""
+Description
+- This part is directly affect to how you open the image
+"""
+# Basic Image reader, preprocess of images can placed here
+def cv_load_and_resize(x, image_size, is_training = True, do_augment = False, seq = None):
+    im_w, im_h, im_c = image_size
+    im = cv2.imread(x)
+    im = cv2.resize(im, (im_w, im_h))
+    if do_augment and is_training:
+        im = seq.augment_image(im)
+    return im
+
+"""
+Queue Data Loader
+"""
 def enqueue(queue, stop, gen_func):
     gen = gen_func()
     while True:
@@ -225,7 +241,7 @@ class create_data_generator():
         
         if self.dual_:
             #self.train_epoch_queue.set()
-            self.data_gen.train_epoch_queue.queue.clear()
+            self.train_epoch_queue.queue.clear()
         
         #self.train_sample_queue.set()
         self.train_sample_queue.queue.clear()
