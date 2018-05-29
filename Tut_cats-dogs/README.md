@@ -22,3 +22,7 @@ v201805, <br>
   2. Update Queue, make it epoch queue and sample queue <br>
 
 ---
+<TO DO>
+1. rebuild keras version
+2. build tf-estimator version
+
