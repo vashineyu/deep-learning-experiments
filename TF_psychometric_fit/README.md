@@ -5,4 +5,4 @@ In this session, we're going to fit the psychometric function with Tensorflow. <
 > Generally, a psychometric function is an inferential model applied in detection and discrimination tasks. It models the relationship  between a given feature of a physical stimulus, e.g. velocity, duration, brightness, weight etc., and forced-choice responses of a human test subject. (Wiki[https://en.wikipedia.org/wiki/Psychometric_function]) <br>
   
 The shape of the psychometric function is very similar to (or general format) of the sigmoid function. <br>
-![Figure1](https://www.ncbi.nlm.nih.gov/books/NBK11513/figure/ch24psych1.F13/)
+![](https://www.ncbi.nlm.nih.gov/books/NBK11513/bin/psych1f13.jpg)
