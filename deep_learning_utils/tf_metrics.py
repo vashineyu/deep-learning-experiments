@@ -1,14 +1,50 @@
 import tensorflow as tf
 
-def f1sc_metrics(y_true, y_pred):
-    prediction = tf.argmax(y_pred, axis = 1)
-    truth = tf.argmax(y_true, axis = 1)
+def get_accuracy(y_true, y_pred):
+    """
+    - Description
+    y_true should be one-hot encoded tensor
+    y_pred should be logit tensor
+    - Reutrn
+    accuracy
+    """
+    correct_predict = tf.equal(tf.argmax(y_true, axis = 1),
+                               tf.argmax(y_pred, axis = 1))
+    return tf.reduce_mean(tf.cast(correct_predict, tf.float16))
     
-    TP = tf.count_nonzero(prediction * truth, dtype=tf.float32)
-    TN = tf.count_nonzero((prediction - 1) * (truth - 1), dtype=tf.float32)
-    FP = tf.count_nonzero(prediction * (truth - 1), dtype=tf.float32)
-    FN = tf.count_nonzero((prediction - 1) * truth, dtype=tf.float32)
+def get_f1sc(y_true, y_pred, threshold = 0.5):
+    """
+    - Description
+    y_true: should be one-hot encoded tensor
+    y_pred: should be logit tensor
+    threshold: thres to claim it is 1
+    - Reutrn
+    f1-score under threshold
+    """
+    y_true = tf.argmax(y_true, axis = 1)
+    y_pred = y_pred[:,1] >= threshold
     
-    recall = TP / (TP + FN)
-    precision = TP / (TP + TP)
-    return 2 * precision * recall / (precision + recall + 1e-8)
+    recall = tf.metrics.recall(y_true, y_pred)[1]
+    precision = tf.metrics.precision(y_true, y_pred)[1]
+
+    return 2 * (recall * precision) / (recall + precision)
+    
+def get_auc(y_true, y_pred, ctype = "ROC"):
+    """
+    - Description
+    y_true: should be single vector
+    y_pred: should be single vector as 1
+    ctype: ROC or PR (only support ROC currently)
+    - Reutrn
+    Area Under Curve of ROC/PR
+    """
+    if len(y_true.shape) == 2:
+        y_true = tf.argmax(y_true, axis = 1)
+    if len(y_pred.shape) == 2:
+        y_pred = y_pred[:,1]
+
+    auc = tf.metrics.auc(labels=y_true, 
+                     predictions=y_pred,
+                     num_thresholds = 500,
+                     curve=ctype)[1]
+    return auc
