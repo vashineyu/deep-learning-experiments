@@ -21,6 +21,10 @@ v201805, <br>
   1. Deploy "TF_HandyTrainer", which makes us easier to how to programming with tensorflow <br>
   2. Update Queue, make it epoch queue and sample queue <br>
 
+v201806, <br>
+  1. Not an update, experiment on serveral interesting test.
+   * Loss function comparison
+
 ---
 <TO DO>
 1. rebuild keras version
