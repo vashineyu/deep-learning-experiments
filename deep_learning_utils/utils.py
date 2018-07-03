@@ -6,6 +6,10 @@ import glob
 import pandas as pd
 import numpy as np
 
+from PIL import Image
+import scipy.stats as st
+from scipy.ndimage import gaussian_filter
+from scipy.ndimage.filters import convolve
 # --- 
 
 # The pixels are one-indexed and numbered from top to bottom, then left to right: 1 is pixel (1,1), 2 is pixel (2,1), etc.
@@ -70,3 +74,56 @@ def mask_to_label(x):
         output_string = output_string + str(starter) + ' ' + str(length) + ' '
     return output_string.rstrip() # remove the final white space with right strip
     
+"""
+Apply 2d-difference-of-gaussian on mask image
+these function can help us easily to get border of each instance from instance mask
+"""
+def instance_mask_to_binary_mask(img):
+    # input: instance mask
+    # output: one-hot binary mask
+    num_instance = len(np.unique(img)) - 1 # we don't need to take 0 into account
+    # allocate memory
+    #mask = np.zeros((img.shape[0], img.shape[1], num_instance))
+    mask = np.array([img == i for i in np.arange(1, num_instance + 1)])
+    mask = np.swapaxes(mask, 0, 1).swapaxes(1, 2)
+    mask = mask * 1. # make bool mask into 1/0 mask
+    
+    return mask
+
+def gkern(k1=11, s1=7, k2 = 11, s2 = 3):
+    """Returns a 2D Gaussian kernel array."""
+
+    interval = (2*s1+1.)/(k1)
+    x = np.linspace(-s1-interval/2., s1+interval/2., k1+1)
+    kern1d = np.diff(st.norm.cdf(x))
+    kernel_raw = np.sqrt(np.outer(kern1d, kern1d))
+    
+    kernel1 = kernel_raw/kernel_raw.sum()
+    
+    interval = (2*s2+1.)/(k2)
+    x = np.linspace(-s2-interval/2., s2+interval/2., k2+1)
+    kern1d = np.diff(st.norm.cdf(x))
+    kernel_raw = np.sqrt(np.outer(kern1d, kern1d))
+    kernel2 = kernel_raw/kernel_raw.sum()
+    
+    return kernel1 - kernel2
+
+def apply_2d_dog(onehot_bimask, dog_kernel):
+    # onehot-bimask: one instance mask per slice (h,w,instance_mask)
+    
+    # do filtering
+    boundary = np.array([convolve(onehot_bimask[:, :, i], dog_kernel) for i in np.arange(onehot_bimask.shape[-1])])
+    boundary = np.swapaxes(boundary, 0, 1).swapaxes(1, 2)
+    
+    # cut boundary
+    boundary[boundary > 0 ] = 0
+    boundary[boundary < 0 ] = 1
+    
+    return boundary.sum(axis = -1) # reduce_dimension
+
+# Example usage
+#onehot_mask = instance_mask_to_binary_mask(instance_mask)
+#dog_kernel = gkern(k1 = 9, s1 = 7, k2 = 9, s2 = 3)
+#tmp = apply_2d_dog(onehot_bimask=a, dog_kernel=dog_kernel)
+#tmp[tmp >= 1] = 1 # because overlapping area will larger than one, if we're going to binarized it, just make them as ssame
+
