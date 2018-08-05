@@ -14,7 +14,22 @@ def image_channel_suffle(image):
 
 def img_func(images, random_state, parents, hooks):
     for img in images:
-        img = image_channel_suffle(img)
+        img[:] = image_channel_suffle(img)
+    return images
+
+def img_colorswap_func(images, random_state, parents, hooks, ask = None):
+    avail_space = {'hsv':cv2.COLOR_RGB2HSV,
+                   'hls':cv2.COLOR_RGB2HLS,
+                   'lab':cv2.COLOR_RGB2Lab,
+                   'luv':cv2.COLOR_RGB2LUV,
+                   'xyz':cv2.COLOR_RGB2XYZ,
+                   'ycrcb':cv2.COLOR_RGB2YCrCb,
+                   'yuv':cv2.COLOR_RGB2YUV}
+    for img in images:
+        this_swap = avail_space[random.choice(list(avail_space))]
+        img[:] = cv2.cvtColor(img, this_swap)
+        #plt.imshow(img)
+        #plt.show()
     return images
 
 def keypoint_func(keypoints_on_images, random_state, parents, hooks):
