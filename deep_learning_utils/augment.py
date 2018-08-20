@@ -32,6 +32,16 @@ def img_colorswap_func(images, random_state, parents, hooks, ask = None):
         #plt.show()
     return images
 
+def img_multiply_3d(images, random_state, parents, hooks, mul_range = (0.8, 1.2)):
+    # In 3D images, iaa.Multiply will failed, we build our own multipy here
+    m_range = np.arange(mul_range[0], mul_range[1], 0.01)
+    for img in images:
+        this_mul = np.random.choice(m_range, 1)
+        img[:] = img * this_mul
+    return images
+
+
+###################
 def keypoint_func(keypoints_on_images, random_state, parents, hooks):
     return keypoints_on_images
 
