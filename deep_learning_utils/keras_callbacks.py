@@ -19,7 +19,7 @@ class logAUC(Callback):
         logs = logs or {}
         y_true = self.validation_data[1].argmax(axis = 1)
         y_pred = self.model.predict(self.validation_data[0])
-        logs["val_auc"] = roc_auc_score(y_true, y_pred.argmax(axis = 1))
+        logs["val_auc"] = roc_auc_score(y_true, y_pred[:,1])
         
         thres = 0.5 # prepare it, for further we can change our judgement threshold
         y_pred = (y_pred[:, 1] >= thres) * 1
