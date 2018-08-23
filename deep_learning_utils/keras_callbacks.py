@@ -1,7 +1,10 @@
 from keras.callbacks import Callback
 from sklearn.metrics import roc_auc_score, f1_score, confusion_matrix
 
-class CB_BinaryClassification(Callback):
+class logAUC(Callback):
+    """
+    Use this function only in binary classification
+    """
     def __init__(self):
         return
     
