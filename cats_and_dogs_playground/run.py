@@ -1,13 +1,14 @@
 from __future__ import print_function
 import os
 import glob
-import re
+import sys
+import time
+import argparse
 import pandas as pd
 import numpy as np
-import random
 from sklearn.model_selection import train_test_split
 
-import argparse
+
 parser = argparse.ArgumentParser(description="Cats/Dogs playground")
 parser.add_argument(
     "--config-file",
@@ -27,12 +28,8 @@ args = parser.parse_args()
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-import time
-from tqdm import tqdm
 
-import sys
-import cv2
-import imgaug as ia
+from tqdm import tqdm
 from imgaug import augmenters as iaa
 import tensorflow as tf
 
@@ -55,15 +52,15 @@ def main():
     image_test_list = glob.glob(cfg.DATASET.TEST + '*.jpg')
 
     df_train = pd.DataFrame({'img_path': image_train_list})
-    df_test = pd.DataFrame({'img_path': image_test_list})
+    
 
     df_train['cate'] = df_train.img_path.apply(os.path.basename)
     df_train['cate'] = [i.split(".")[0] for i in list(df_train.cate)]
-    df_train.cate = df_train.cate.replace({'dog': 0, 'cat': 1})
+    df_train.cate = df_train.cate.replace({'dog':0, 'cat':1})
 
-    df_train_0, df_val_0 = train_test_split(df_train[df_train['cate'] == 0], test_size = 1-cfg.TRAIN.TRAIN_RATIO)
-    df_train_1, df_val_1 = train_test_split(df_train[df_train['cate'] == 1], test_size = 1-cfg.TRAIN.TRAIN_RATIO)
-    df_val = pd.concat((df_val_0, df_val_1)).reset_index(drop = True)
+    _, df_val_0 = train_test_split(df_train[df_train['cate'] == 0], test_size=1-cfg.TRAIN.TRAIN_RATIO)
+    _, df_val_1 = train_test_split(df_train[df_train['cate'] == 1], test_size=1-cfg.TRAIN.TRAIN_RATIO)
+    df_val = pd.concat((df_val_0, df_val_1)).reset_index(drop=True)
 
     del df_val_0, df_val_1
     
@@ -72,13 +69,13 @@ def main():
                         class_id=0, n_classes=2,
                         f_input_preproc=preproc if not USE_RESNET_PREPROC else tf.keras.applications.resnet50.preprocess_input,
                         augmentation=Augmentation_Setup.augmentation, 
-                        onehot= True, 
+                        onehot=True, 
                         image_size=cfg.TRAIN.IMAGE_SIZE)
     dvalid = GetDataset(df_list=df_val, 
                         class_id=0, n_classes=2,
                         f_input_preproc=preproc if not USE_RESNET_PREPROC else tf.keras.applications.resnet50.preprocess_input,
                         augmentation=None, 
-                        onehot= True, 
+                        onehot=True, 
                         image_size=cfg.TRAIN.IMAGE_SIZE)
     
     valid_gen = Customized_dataloader([dvalid], batch_size_per_dataset=16, num_workers=1)
@@ -149,18 +146,17 @@ def main():
 class Augmentation_Setup(object):  
     sometimes = lambda aug: iaa.Sometimes(0.5, aug)
     lesstimes = lambda aug: iaa.Sometimes(0.2, aug)
-    
     augmentation = iaa.Sequential([
         iaa.Fliplr(0.5, name="FlipLR"),
         iaa.Flipud(0.5, name="FlipUD"),
-        iaa.OneOf([iaa.Affine(rotate = 90),
-                   iaa.Affine(rotate = 180),
-                   iaa.Affine(rotate = 270)]),
+        iaa.OneOf([iaa.Affine(rotate=90),
+                   iaa.Affine(rotate=180),
+                   iaa.Affine(rotate=270)]),
         sometimes(iaa.Affine(
-                    scale = (0.8,1.2),
-                    translate_percent = (-0.2, 0.2),
-                    rotate = (-15, 15),
-                    mode = 'wrap'
+                    scale=(0.8,1.2),
+                    translate_percent=(-0.2, 0.2),
+                    rotate=(-15, 15),
+                    mode="wrap"
                     ))
     ])
     
