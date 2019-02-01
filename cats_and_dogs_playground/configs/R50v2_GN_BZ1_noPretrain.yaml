@@ -1,0 +1,14 @@
+SYSTEM:
+  GPU_ID: "1"
+  NUM_WORKERS: 4
+  BACKBONE_PATH: "/home/seanyu/research/deep-learning-experiments/cats_and_dogs_playground/experimental_stuff"
+  NAME_FLAG: "R50v2_GN_BZ1_noPretrain"
+  
+TRAIN:
+  BATCH_SIZE: 2
+  
+MODEL:
+  OPTIMIZER: "Adam"
+  USE_PRETRAIN: False
+  BACKBONE: "R-50-v2"
+  NORM_USE: "gn"

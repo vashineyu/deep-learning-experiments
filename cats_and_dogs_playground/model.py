@@ -10,16 +10,48 @@ def build_model(model_fn, norm_use, input_shape=(256,256,3), num_classes=2, weig
     
     return tf.keras.Model(inputs=pretrain_modules.input, outputs=output)
 
-"""
-class Build_FunctionalModel():
-    def __init__(model_fn, norm_use, input_shape=(256,256,3), num_class=2, weights=None):
+def preproc(img):
+    #return (img - img.min()) / (img.max() - img.min())
+    return img / 255.
+
+def parse_model_fn(model_name):
+    if model_name == "R-50-v1":
+        model_fn = ResNet50
         
-        self.pretrain_modules = model_fn(include_top=False, input_shape=input_shape, norm_use=norm_use, weights=weights)
-        gap = tf.keras.layers.GlobalAveragePooling2D()(self.pretrain_modules.output)
-        self.logit = tf.keras.layers.Dense(units=num_class, name="logit")(gap)
-        self.out = tf.keras.layers.Activation("softmax", name="output")(self.logit)
+    elif model_name == "R-101-v1":
+        model_fn = ResNet101
         
-    def build():
-        return tf.keras.models.Model(inputs=[self.pretrain_modules.input],
-                                     outputs=[self.out])
-"""
+    elif model_name == "R-152-v1":
+        model_fn = ResNet152
+        
+    elif model_name == "R-50-v2":
+        model_fn = ResNet50V2
+        
+    elif model_name == "R-101-v2":
+        model_fn = ResNet101V2
+    
+    elif model_name == "R-152-v2":
+        model_fn = ResNet152V2
+        
+    elif model_name == "R-50-xt":
+        model_fn = ResNeXt50
+        
+    elif model_name == "R-101-xt":
+        model_fn = ResNeXt101
+    
+    else:
+        raise(AssertionError("Model: %s not found, check your config" % (model_name)))
+        
+    return model_fn
+
+def make_optimizer(cfg):
+    if cfg.MODEL.OPTIMIZER.lower() == "sgd":
+        optim = tf.keras.optimizers.SGD(lr=cfg.TRAIN.LR, momentum=0.95, nesterov=True)
+        
+    elif cfg.MODEL.OPTIMIZER.lower() == "adam":
+        optim = tf.keras.optimizers.Adam(lr=cfg.TRAIN.LR)
+        
+    else:
+        raise(AssertionError("Optimizer: %s not found" % (cfg.MODEL.OPTIMIZER)) )
+    
+    return optim

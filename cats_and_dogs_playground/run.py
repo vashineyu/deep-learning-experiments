@@ -1,172 +1,168 @@
 from __future__ import print_function
-
 import os
 import glob
 import re
-import argparse
 import pandas as pd
 import numpy as np
-
-from func.callbacks import *
-from func.data_loader import *
-from func.model import build_model
-from func.TF_HandyTrainer import create_model
-
-from sklearn import preprocessing
+import random
 from sklearn.model_selection import train_test_split
 
-from tqdm import tqdm # if use notebook
+import argparse
+parser = argparse.ArgumentParser(description="Cats/Dogs playground")
+parser.add_argument(
+    "--config-file",
+    default="",
+    metavar="FILE",
+    help="path to config file",
+    type=str,
+    )
+parser.add_argument(
+        "opts",
+        help="Modify config options using the command-line",
+        default=None,
+        nargs=argparse.REMAINDER,
+    )
+args = parser.parse_args()
 
-from threading import Thread, Event
-import queue
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import time
+from tqdm import tqdm
 
+import sys
 import cv2
 import imgaug as ia
 from imgaug import augmenters as iaa
-import random
-
-### Define arguments ###
-parser = argparse.ArgumentParser()
-parser.add_argument('--gpu_id', default=6)
-parser.add_argument('--image_dir', default="/home/seanyu/datasets/cat_dog/dataset/")
-parser.add_argument('--save_dir', default='./result')
-parser.add_argument('--is_training', default=1, type=int)
-parser.add_argument('--batch_size', default=48, type=int)
-parser.add_argument('--do_augment', default=True, type = bool)
-parser.add_argument('--epochs', default=50, type=int)
-parser.add_argument('--lr', default=0.0001, type=float)
-parser.add_argument('--image_size', default=(120,120,3), type = int)
-parser.add_argument('--n_classes', default=2, type = int)
-parser.add_argument('--train_ratio', default=0.9, type = float)
-parser.add_argument('--use_model_ckpt', default = None, type = str)
-parser.add_argument('--model_file_name', default = 'tmp')
-parser.add_argument('--n_threads', default = 4, type = int)
-parser.add_argument('--dq_size', default = 10, type = int)
-parser.add_argument('--optimizer', default = 'sgd', type = str)
-FLAGS = parser.parse_args()
-print(FLAGS)
-
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ['CUDA_VISIBLE_DEVICES'] = str(FLAGS.gpu_id)
 import tensorflow as tf
-import tensorflow.contrib.slim as slim
-import tensorflow.contrib.slim.nets as slimNet
 
-# Check and build avaiable path
-if not os.path.exists(FLAGS.save_dir):
-    os.makedirs(FLAGS.save_dir)
+def main():
+    from default import get_cfg_defaults
+    cfg = get_cfg_defaults()
+    cfg.merge_from_file(args.config_file)
+    cfg.merge_from_list(args.opts)
+    cfg.freeze()
+    sys.path.append(cfg.SYSTEM.BACKBONE_PATH)
+    from model import build_model, parse_model_fn, make_optimizer, preproc
+    from data_generator import GetDataset, Customized_dataloader
+    print(cfg)
+    
+    os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
+    os.environ['CUDA_VISIBLE_DEVICES'] = str(cfg.SYSTEM.GPU_ID)
+    
+    """  Get data """
+    image_train_list = glob.glob(cfg.DATASET.TRAIN + '*.jpg')
+    image_test_list = glob.glob(cfg.DATASET.TEST + '*.jpg')
 
-model_dir = FLAGS.save_dir + '/model'
-if not os.path.exists(model_dir):
-    os.makedirs(model_dir)
+    df_train = pd.DataFrame({'img_path': image_train_list})
+    df_test = pd.DataFrame({'img_path': image_test_list})
 
-graphs_dir = FLAGS.save_dir + '/graphs'
-if not os.path.exists(graphs_dir):
-    os.makedirs(graphs_dir)
+    df_train['cate'] = df_train.img_path.apply(os.path.basename)
+    df_train['cate'] = [i.split(".")[0] for i in list(df_train.cate)]
+    df_train.cate = df_train.cate.replace({'dog': 0, 'cat': 1})
 
-"""  
-< Get data > 
-Simply process data here
-"""
+    df_train_0, df_val_0 = train_test_split(df_train[df_train['cate'] == 0], test_size = 1-cfg.TRAIN.TRAIN_RATIO)
+    df_train_1, df_val_1 = train_test_split(df_train[df_train['cate'] == 1], test_size = 1-cfg.TRAIN.TRAIN_RATIO)
+    df_val = pd.concat((df_val_0, df_val_1)).reset_index(drop = True)
 
-d_train = FLAGS.image_dir + '/train/'
-d_test = FLAGS.image_dir + '/test1/'
+    del df_val_0, df_val_1
+    
+    USE_RESNET_PREPROC = cfg.TRAIN.USE_RESNET_PREPROC
+    dtrain = GetDataset(df_list=df_train,
+                        class_id=0, n_classes=2,
+                        f_input_preproc=preproc if not USE_RESNET_PREPROC else tf.keras.applications.resnet50.preprocess_input,
+                        augmentation=Augmentation_Setup.augmentation, 
+                        onehot= True, 
+                        image_size=cfg.TRAIN.IMAGE_SIZE)
+    dvalid = GetDataset(df_list=df_val, 
+                        class_id=0, n_classes=2,
+                        f_input_preproc=preproc if not USE_RESNET_PREPROC else tf.keras.applications.resnet50.preprocess_input,
+                        augmentation=None, 
+                        onehot= True, 
+                        image_size=cfg.TRAIN.IMAGE_SIZE)
+    
+    valid_gen = Customized_dataloader([dvalid], batch_size_per_dataset=16, num_workers=1)
+    x_val, y_val = [], []
+    for _ in tqdm(range(100)):
+        a,b = next(valid_gen)
+        x_val.append(a)
+        y_val.append(b)
+    x_val = np.concatenate(x_val)
+    y_val = np.concatenate(y_val)
+    valid_gen.stop_worker()
 
-image_train_list = glob.glob(d_train + '*.jpg')
-image_test_list = glob.glob(d_test + '*.jpg')
+    print(x_val.shape)
+    print(y_val.shape)
+    print(y_val.sum(axis=0))
+    
+    train_gen = Customized_dataloader([dtrain], 
+                                      batch_size_per_dataset=cfg.TRAIN.BATCH_SIZE // cfg.TRAIN.NUM_CLASSES, 
+                                      num_workers=cfg.SYSTEM.NUM_WORKERS, 
+                                      queue_size=cfg.SYSTEM.QUEUE_SIZE)
+    
+    
+    model = build_model(model_fn=parse_model_fn(cfg.MODEL.BACKBONE), 
+                        norm_use=cfg.MODEL.NORM_USE,
+                        weights="imagenet" if cfg.MODEL.USE_PRETRAIN else None)
+    optim = make_optimizer(cfg)
+    
+    model.compile(loss='categorical_crossentropy', 
+                  metrics=["accuracy"], 
+                  optimizer=optim)
+    model.summary()
+    cb_list = [tf.keras.callbacks.ReduceLROnPlateau(factor=0.5,
+                                                patience=4,
+                                                min_lr=1e-12),
+          ]
+    model.fit_generator(train_gen,
+                        epochs=cfg.TRAIN.EPOCHS,
+                        steps_per_epoch=cfg.TRAIN.NUM_UPDATES, 
+                        validation_data=(x_val, y_val),
+                        callbacks=cb_list
+                        )
+    
+    train_loss = model.history.history['loss']
+    valid_loss = model.history.history['val_loss']
+    train_acc = model.history.history['acc']
+    valid_acc = model.history.history['val_acc']
 
-df_train = pd.DataFrame({'img_path': image_train_list})
-df_test = pd.DataFrame({'img_path': image_test_list})
+    plt.figure(figsize=(8,6))
+    plt.plot(range(len(train_loss)), train_loss, label='train_loss')
+    plt.plot(range(len(valid_loss)), valid_loss, label='valid_loss')
+    plt.legend()
+    plt.savefig(os.path.join("results", "exp_" + cfg.SYSTEM.NAME_FLAG + "_loss.png"))
 
-df_train['cate'] = df_train.img_path.apply(os.path.basename)
-df_train['cate'] = [i.split(".")[0] for i in list(df_train.cate)]
-df_train.cate = df_train.cate.replace({'dog': 0, 'cat': 1})
-
-nb_epoch = FLAGS.epochs
-
-df_train_0, df_val_0 = train_test_split(df_train[df_train['cate'] == 0], test_size = 1-FLAGS.train_ratio)
-df_train_1, df_val_1 = train_test_split(df_train[df_train['cate'] == 1], test_size = 1-FLAGS.train_ratio)
-
-df_val = pd.concat((df_val_0, df_val_1)).reset_index(drop = True)
-
-del df_val_0, df_val_1
-
-"""
-Data Augmentation setting
-"""
-sometimes = lambda aug: iaa.Sometimes(0.5, aug)
-seq = iaa.Sequential([
-    iaa.Crop(px=(0, 16)), # crop images from each side by 0 to 16px (randomly chosen)
-    iaa.Fliplr(0.5), # horizontally flip 50% of the images
-    sometimes(iaa.Affine(
-            scale = (0.8,1.2),
-            translate_percent = (-0.2, 0.2),
-            rotate = (-20, 20),
-            order = [0, 1],
-            #cval = (0,255),
-            mode = 'wrap'
-            ))
-])
-
-# Basic Image reader, preprocess of images can placed here
-def cv_load_and_resize(x, is_training = True):
-    im_w, im_h, im_c = FLAGS.image_size
-    im = cv2.imread(x)
-    im = cv2.resize(im, (im_w, im_h))
-    if FLAGS.do_augment and is_training:
-        im = seq.augment_image(im)
-    return im
-
-data_gen = create_data_generator(df=[df_train_0, df_train_1], 
-                                 n_classes = FLAGS.n_classes,
-                                 image_size = FLAGS.image_size,
-                                 do_augment = FLAGS.do_augment,
-                                 aug_params=seq,
-                                 batch_size=FLAGS.batch_size,
-                                 n_batch = FLAGS.n_batch,
-                                 open_image_handler=cv_load_and_resize)
-
-data_gen.start_train_threads(FLAGS.n_threads, dq_size = FLAGS.dq_size)
-train_gen = data_gen.get_data()
-
-print("Loading evaluation data")
-x_val, y_val = data_gen.get_evaluate_data(df_val)
-print(x_val.shape)
-
-# Call model
-model_ops, metric_history = build_model(FLAGS)
-
-# Set callbacks
-cb_dict = {
-    'reduce_lr' : ReduceLROnPlateau(lr=FLAGS.lr, factor=0.5, patience=3),
-    'earlystop' : EarlyStopping(min_delta = 1e-4, patience= 15),
-    'checkpoint' : Model_checkpoint(model_name=model_dir + '/' +  FLAGS.model_file_name, 
-                                    save_best_only=True),
-}
-callback_dict = {
-    'on_session_begin':[], # start of a session
-    'on_batch_begin':[], # start of a training batch
-    'on_batch_end':[], # end of a training batch
-    'on_epoch_begin':[], # start of a epoch
-    'on_epoch_end':[cb_dict['earlystop'], 
-                    cb_dict['reduce_lr'],
-                    cb_dict['checkpoint']], # end of a epoch
-    'on_session_end':[] # end of a session
-    }
-
-callback_manager = Run_collected_functions(callback_dict)
-
-# Train
-trainer = TF_HandyTrainer(FLAGS=FLAGS, # hyper-parameters
-                          data_gen=data_gen, # data generator
-                          data_gen_get_data = train_gen,
-                          model_ops=model_ops, # model
-                          metric_history=metric_history, # metric recording
-                          callback_manager=callback_manager# runable callbacks
-                         )
-
-trainer.initalize()
-trainer.restore(model_to_restore='resnet_v2_50.ckpt', partial_restore=True)
-trainer.do_training(cb_dict=cb_dict, validation_set=(x_val, y_val))
-
-final_result = trainer.predict(x_val, model_to_restore=cb_dict['checkpoint'].model_name + '.ckpt')
+    plt.figure(figsize=(8,6))
+    plt.plot(range(len(train_acc)), train_acc, label='train_accuracy')
+    plt.plot(range(len(valid_acc)), valid_acc, label='valid_accuracy')
+    plt.legend()
+    plt.savefig(os.path.join("results", "exp_" + cfg.SYSTEM.NAME_FLAG + "_acc.png"))
+    
+    result_df = pd.DataFrame({"train_loss":train_loss,
+                              "valid_loss":valid_loss,
+                              "train_acc":train_acc,
+                              "valid_acc":valid_acc
+                             })
+    result_df.to_csv(os.path.join("results", "exp_" + cfg.SYSTEM.NAME_FLAG + "_result.csv"), index=False)
+    print("All Done")
+    
+class Augmentation_Setup(object):  
+    sometimes = lambda aug: iaa.Sometimes(0.5, aug)
+    lesstimes = lambda aug: iaa.Sometimes(0.2, aug)
+    
+    augmentation = iaa.Sequential([
+        iaa.Fliplr(0.5, name="FlipLR"),
+        iaa.Flipud(0.5, name="FlipUD"),
+        iaa.OneOf([iaa.Affine(rotate = 90),
+                   iaa.Affine(rotate = 180),
+                   iaa.Affine(rotate = 270)]),
+        sometimes(iaa.Affine(
+                    scale = (0.8,1.2),
+                    translate_percent = (-0.2, 0.2),
+                    rotate = (-15, 15),
+                    mode = 'wrap'
+                    ))
+    ])
+    
+if __name__ == '__main__':
+    main()
