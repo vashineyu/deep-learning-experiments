@@ -29,6 +29,10 @@ _C.MODEL.USE_PRETRAIN = True
 _C.MODEL.NORM_USE = "bn" # bn, gn
 _C.MODEL.OPTIMIZER = "SGD" # SGD, Adam
 
+_C.EXPERIMENT = CN()
+_C.EXPERIMENT.ABC = 1
+_C.EXPERIMENT.DEF = CN()
+_C.EXPERIMENT.DEF.RGB = "test"
 
 def get_cfg_defaults():
   """Get a yacs CfgNode object with default values for my_project."""
