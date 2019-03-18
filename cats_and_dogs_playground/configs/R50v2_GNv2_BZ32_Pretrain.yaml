@@ -1,7 +1,7 @@
 SYSTEM:
   NUM_WORKERS: 4
   BACKBONE_PATH: "/home/seanyu/research/deep-learning-experiments/cats_and_dogs_playground/experimental_stuff"
-  NAME_FLAG: "R50v1_BN_BZ32_noPretrain"
+  NAME_FLAG: "R50v2_GNv2_BZ32_Pretrain"
   
 TRAIN:
   BATCH_SIZE: 32
@@ -9,4 +9,5 @@ TRAIN:
 MODEL:
   OPTIMIZER: "Adam"
   USE_PRETRAIN: True
-  NORM_USE: "bn"
+  BACKBONE: "R-50-v2"
+  NORM_USE: "gn_v2"

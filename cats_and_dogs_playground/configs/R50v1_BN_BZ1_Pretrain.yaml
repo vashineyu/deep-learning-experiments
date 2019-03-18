@@ -1,5 +1,4 @@
 SYSTEM:
-  GPU_ID: "1"
   NUM_WORKERS: 4
   BACKBONE_PATH: "/home/seanyu/research/deep-learning-experiments/cats_and_dogs_playground/experimental_stuff"
   NAME_FLAG: "R50v1_BN_BZ1_Pretrain"

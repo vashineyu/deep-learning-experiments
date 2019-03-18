@@ -1,8 +1,19 @@
 import tensorflow as tf
 from backbone import *
 
+graph_mapping = {
+    "R-50-v1":ResNet50,
+    "R-101-v1":ResNet101,
+    "R-152-v1":ResNet152,
+    "R-50-v2":ResNet50V2,
+    "R-101-v2":ResNet101V2,
+    "R-152-v2":ResNet152V2,
+    "R-50-xt":ResNeXt50,
+    "R-101-xt":ResNeXt101}
 
-def build_model(model_fn, norm_use, input_shape=(256,256,3), num_classes=2, weights=None):
+
+def build_model(norm_use, input_shape=(256,256,3), num_classes=2, backbone="R-50-v1", weights=None):
+    model_fn = graph_mapping[backbone]
     pretrain_modules = model_fn(include_top=False, input_shape=input_shape, norm_use=norm_use, weights=weights)
     gap = tf.keras.layers.GlobalAveragePooling2D()(pretrain_modules.output)
     logits = tf.keras.layers.Dense(units=num_classes, name="logits")(gap)
@@ -13,36 +24,6 @@ def build_model(model_fn, norm_use, input_shape=(256,256,3), num_classes=2, weig
 def preproc(img):
     #return (img - img.min()) / (img.max() - img.min())
     return img / 255.
-
-def parse_model_fn(model_name):
-    if model_name == "R-50-v1":
-        model_fn = ResNet50
-        
-    elif model_name == "R-101-v1":
-        model_fn = ResNet101
-        
-    elif model_name == "R-152-v1":
-        model_fn = ResNet152
-        
-    elif model_name == "R-50-v2":
-        model_fn = ResNet50V2
-        
-    elif model_name == "R-101-v2":
-        model_fn = ResNet101V2
-    
-    elif model_name == "R-152-v2":
-        model_fn = ResNet152V2
-        
-    elif model_name == "R-50-xt":
-        model_fn = ResNeXt50
-        
-    elif model_name == "R-101-xt":
-        model_fn = ResNeXt101
-    
-    else:
-        raise(AssertionError("Model: %s not found, check your config" % (model_name)))
-        
-    return model_fn
 
 def make_optimizer(cfg):
     if cfg.MODEL.OPTIMIZER.lower() == "sgd":

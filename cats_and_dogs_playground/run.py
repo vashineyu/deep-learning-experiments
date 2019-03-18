@@ -1,18 +1,24 @@
 from __future__ import print_function
-import os
+import argparse
+import cv2
 import glob
+import os
+import re
+import random
 import sys
 import time
-import argparse
-import pandas as pd
-import numpy as np
-from sklearn.model_selection import train_test_split
 
+import numpy as np
+import pandas as pd
+import tensorflow as tf
+
+from sklearn.model_selection import train_test_split
+from tqdm import tqdm
 
 parser = argparse.ArgumentParser(description="Cats/Dogs playground")
 parser.add_argument(
     "--config-file",
-    default="",
+    default=None,
     metavar="FILE",
     help="path to config file",
     type=str,
@@ -25,27 +31,20 @@ parser.add_argument(
     )
 args = parser.parse_args()
 
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-
-from tqdm import tqdm
-from imgaug import augmenters as iaa
-import tensorflow as tf
-
 def main():
-    from default import get_cfg_defaults
+    from config import get_cfg_defaults
     cfg = get_cfg_defaults()
+    if args.config_file is not None:
     cfg.merge_from_file(args.config_file)
-    cfg.merge_from_list(args.opts)
+    if args.opts is not None:
+        cfg.merge_from_list(args.opts)
     cfg.freeze()
     sys.path.append(cfg.SYSTEM.BACKBONE_PATH)
-    from model import build_model, parse_model_fn, make_optimizer, preproc
-    from data_generator import GetDataset, Customized_dataloader
     print(cfg)
     
-    os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
-    os.environ['CUDA_VISIBLE_DEVICES'] = str(cfg.SYSTEM.GPU_ID)
+    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+    device = ','.join(str(i) for i in cfg.SYSTEM.DEVICES)
+    os.environ['CUDA_VISIBLE_DEVICES'] = device
     
     """  Get data """
     image_train_list = glob.glob(cfg.DATASET.TRAIN + '*.jpg')
@@ -98,9 +97,8 @@ def main():
                                       queue_size=cfg.SYSTEM.QUEUE_SIZE)
     
     
-    model = build_model(model_fn=parse_model_fn(cfg.MODEL.BACKBONE), 
-                        norm_use=cfg.MODEL.NORM_USE,
-                        weights="imagenet" if cfg.MODEL.USE_PRETRAIN else None)
+    model = build_model(backbone=cfg.MODEL.BACKBONE, 
+                        norm_use=cfg.MODEL.NORM_USE, weights="imagenet" if cfg.MODEL.USE_PRETRAIN else None)
     optim = make_optimizer(cfg)
     
     model.compile(loss='categorical_crossentropy', 
