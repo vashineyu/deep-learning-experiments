@@ -1,12 +1,12 @@
-from __future__ import print_function
+"""train.py
+
+main function to train the cat/dog classifier
+
+"""
 import argparse
-import cv2
 import glob
 import os
-import re
-import random
 import sys
-import time
 
 import numpy as np
 import pandas as pd
@@ -15,106 +15,83 @@ import tensorflow as tf
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 
-parser = argparse.ArgumentParser(description="Cats/Dogs playground")
-parser.add_argument(
-    "--config-file",
-    default=None,
-    metavar="FILE",
-    help="path to config file",
-    type=str,
-    )
-parser.add_argument(
-        "opts",
-        help="Modify config options using the command-line",
-        default=None,
-        nargs=argparse.REMAINDER,
-    )
-args = parser.parse_args()
+from train.config import get_cfg_defaults
+from train.augment import Augmentation_Setup as augment_fn
+from train.dataloader import GetDataset, DataLoader
+from train.model import build_model, make_optimizer
+from train.model import preproc_resnet as preproc_fn
+from train.utils import check_cfg, try_makedirs, fetch_path_from_dirs
 
 def main():
-    from config import get_cfg_defaults
-    from augment import Augmentation_Setup
-    from data_generator import GetDataset, Customized_dataloader
-    from model import build_model, preproc, make_optimizer
     cfg = get_cfg_defaults()
     if args.config_file is not None:
         cfg.merge_from_file(args.config_file)
     if args.opts is not None:
         cfg.merge_from_list(args.opts)
     cfg.freeze()
-    sys.path.append(cfg.SYSTEM.BACKBONE_PATH)
     print(cfg)
-    
-    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+    check_cfg(cfg)
+
     device = ','.join(str(i) for i in cfg.SYSTEM.DEVICES)
+    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
     os.environ['CUDA_VISIBLE_DEVICES'] = device
     
     """  Get data """
-    image_train_list = glob.glob(cfg.DATASET.TRAIN + '*.jpg')
-    image_test_list = glob.glob(cfg.DATASET.TEST + '*.jpg')
+    dict_target = dict(cfg.DATASET.TARGET_REFERENCE)
+    dict_image_train = {}
+    dict_image_valid = {}
+    for key in dict_target.keys():
+        dict_image_train[key] = fetch_path_from_dirs(cfg.DATASET.TRAIN_DIR, key=key)
+        dict_image_valid[key] = fetch_path_from_dirs(cfg.DATASET.VALID_DIR, key=key)
 
-    df_train = pd.DataFrame({'img_path': image_train_list})
-    
+    dataset_train = GetDataset(datapath_map=dict_image_train,
+                               classid_map=dict_target,
+                               preproc_fn=preproc_fn,
+                               augment_fn=augment_fn.augmentation,
+                               image_size=cfg.DATASET.IMAGE_SIZE)
+    dataset_valid = GetDataset(datapath_map=dict_image_valid,
+                               classid_map=dict_target,
+                               preproc_fn=preproc_fn,
+                               augment_fn=None,
+                               image_size=cfg.DATASET.IMAGE_SIZE)
+    dataloader = DataLoader(dataset=dataset_train,
+                            num_classes=len(dict_target),
+                            batch_size=cfg.MODEL.BATCH_SIZE)
 
-    df_train['cate'] = df_train.img_path.apply(os.path.basename)
-    df_train['cate'] = [i.split(".")[0] for i in list(df_train.cate)]
-    df_train.cate = df_train.cate.replace({'dog':0, 'cat':1})
-
-    _, df_val_0 = train_test_split(df_train[df_train['cate'] == 0], test_size=1-cfg.TRAIN.TRAIN_RATIO)
-    _, df_val_1 = train_test_split(df_train[df_train['cate'] == 1], test_size=1-cfg.TRAIN.TRAIN_RATIO)
-    df_val = pd.concat((df_val_0, df_val_1)).reset_index(drop=True)
-
-    del df_val_0, df_val_1
-    
-    USE_RESNET_PREPROC = cfg.TRAIN.USE_RESNET_PREPROC
-    dtrain = GetDataset(df_list=df_train,
-                        class_id=0, n_classes=2,
-                        f_input_preproc=preproc if not USE_RESNET_PREPROC else tf.keras.applications.resnet50.preprocess_input,
-                        augmentation=Augmentation_Setup.augmentation, 
-                        onehot=True, 
-                        image_size=cfg.TRAIN.IMAGE_SIZE)
-    dvalid = GetDataset(df_list=df_val, 
-                        class_id=0, n_classes=2,
-                        f_input_preproc=preproc if not USE_RESNET_PREPROC else tf.keras.applications.resnet50.preprocess_input,
-                        augmentation=None, 
-                        onehot=True, 
-                        image_size=cfg.TRAIN.IMAGE_SIZE)
-    
-    valid_gen = Customized_dataloader([dvalid], batch_size_per_dataset=16, num_workers=1)
     x_val, y_val = [], []
-    for _ in tqdm(range(100)):
-        a,b = next(valid_gen)
+    for _ in tqdm(range(cfg.DATASET.NUM_VALID_SIZE)):
+        a,b = next(dataset_valid)
         x_val.append(a)
         y_val.append(b)
-    x_val = np.concatenate(x_val)
-    y_val = np.concatenate(y_val)
-    valid_gen.stop_worker()
+    x_val = np.array(x_val)
+    y_val = np.array(y_val)
 
-    print(x_val.shape)
-    print(y_val.shape)
+    print("Validation input size: %s" % len(x_val))
+    print("Validation output size: %s" % y_val.shape[-1])
     print(y_val.sum(axis=0))
-    
-    train_gen = Customized_dataloader([dtrain], 
-                                      batch_size_per_dataset=cfg.TRAIN.BATCH_SIZE // cfg.TRAIN.NUM_CLASSES, 
-                                      num_workers=cfg.SYSTEM.NUM_WORKERS, 
-                                      queue_size=cfg.SYSTEM.QUEUE_SIZE)
-    
-    
+
+
     model = build_model(backbone=cfg.MODEL.BACKBONE, 
-                        norm_use=cfg.MODEL.NORM_USE, weights="imagenet" if cfg.MODEL.USE_PRETRAIN else None)
-    optim = make_optimizer(cfg)
+                        norm_use=cfg.MODEL.NORM_USE,
+                        weights="imagenet" if cfg.MODEL.USE_PRETRAIN else None)
+    optim = make_optimizer(optimizer=cfg.MODEL.OPTIMIZER, learning_rate=cfg.MODEL.LEARNING_RATE)
     
     model.compile(loss='categorical_crossentropy', 
                   metrics=["accuracy"], 
                   optimizer=optim)
     model.summary()
     cb_list = [tf.keras.callbacks.ReduceLROnPlateau(factor=0.5,
-                                                patience=4,
-                                                min_lr=1e-12),
-          ]
-    model.fit_generator(train_gen,
-                        epochs=cfg.TRAIN.EPOCHS,
-                        steps_per_epoch=cfg.TRAIN.NUM_UPDATES, 
+                                                    patience=4,
+                                                    min_lr=1e-12),
+               tf.keras.callbacks.ModelCheckpoint(filepath=os.path.join(cfg.SOURCE.RESULT_DIR, "model.h5"),
+                                                  monitor="val_loss",
+                                                  save_best_only=True),
+               tf.keras.callbacks.TensorBoard(log_dir=os.path.join(cfg.SOURCE.RESULT_DIR, "logs"))
+               ]
+    try_makedirs(cfg.SOURCE.RESULT_DIR)
+    model.fit_generator(dataloader,
+                        epochs=cfg.MODEL.EPOCHS,
+                        steps_per_epoch=cfg.MODEL.NUM_UPDATES,
                         validation_data=(x_val, y_val),
                         callbacks=cb_list
                         )
@@ -123,27 +100,29 @@ def main():
     valid_loss = model.history.history['val_loss']
     train_acc = model.history.history['acc']
     valid_acc = model.history.history['val_acc']
-
-    plt.figure(figsize=(8,6))
-    plt.plot(range(len(train_loss)), train_loss, label='train_loss')
-    plt.plot(range(len(valid_loss)), valid_loss, label='valid_loss')
-    plt.legend()
-    plt.savefig(os.path.join("results", "exp_" + cfg.SYSTEM.NAME_FLAG + "_loss.png"))
-
-    plt.figure(figsize=(8,6))
-    plt.plot(range(len(train_acc)), train_acc, label='train_accuracy')
-    plt.plot(range(len(valid_acc)), valid_acc, label='valid_accuracy')
-    plt.legend()
-    plt.savefig(os.path.join("results", "exp_" + cfg.SYSTEM.NAME_FLAG + "_acc.png"))
-    
     result_df = pd.DataFrame({"train_loss":train_loss,
                               "valid_loss":valid_loss,
                               "train_acc":train_acc,
                               "valid_acc":valid_acc
                              })
-    result_df.to_csv(os.path.join("results", "exp_" + cfg.SYSTEM.NAME_FLAG + "_result.csv"), index=False)
+    result_df.to_csv(os.path.join(cfg.SOURCE.RESULT_DIR, "valid_result.csv"), index=False)
     print("All Done")
     
     
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Cats/Dogs playground parameters")
+    parser.add_argument(
+        "--config-file",
+        default=None,
+        metavar="FILE",
+        help="path to config file",
+        type=str,
+    )
+    parser.add_argument(
+        "opts",
+        help="Modify config options using the command-line",
+        default=None,
+        nargs=argparse.REMAINDER,
+    )
+    args = parser.parse_args()
     main()

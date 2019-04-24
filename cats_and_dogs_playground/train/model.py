@@ -1,7 +1,5 @@
-import sys
 import tensorflow as tf
-sys.path.append("/mnt/deep-learning/usr/seanyu/lab_mldl_tools")
-from models.tf_resnet.model import *
+from .backbone import *
 
 graph_mapping = {
     "R-50-v1":ResNet50,
@@ -14,7 +12,7 @@ graph_mapping = {
     "R-101-xt":ResNeXt101}
 
 
-def build_model(norm_use, input_shape=(256,256,3), num_classes=2, backbone="R-50-v1", weights=None):
+def build_model(norm_use, input_shape=(256, 256, 3), num_classes=2, backbone="R-50-v1", weights=None):
     model_fn = graph_mapping[backbone]
     pretrain_modules = model_fn(include_top=False, input_shape=input_shape, norm_use=norm_use, weights=weights)
     gap = tf.keras.layers.GlobalAveragePooling2D()(pretrain_modules.output)
@@ -23,18 +21,30 @@ def build_model(norm_use, input_shape=(256,256,3), num_classes=2, backbone="R-50
     
     return tf.keras.Model(inputs=pretrain_modules.input, outputs=output)
 
-def preproc(img):
+def preproc_minmax(img):
     #return (img - img.min()) / (img.max() - img.min())
     return img / 255.
 
-def make_optimizer(cfg):
-    if cfg.MODEL.OPTIMIZER.lower() == "sgd":
-        optim = tf.keras.optimizers.SGD(lr=cfg.TRAIN.LR, momentum=0.95, nesterov=True)
+def preproc_resnet(img):
+    return tf.keras.applications.resnet50.preprocess_input(img)
+
+def make_optimizer(optimizer, learning_rate):
+    """
+
+    Args:
+        optimizer (str): optimizer type
+
+    Returns:
+        optim: optimizer object
+
+    """
+    if optimizer.lower() == "sgd":
+        optim = tf.keras.optimizers.SGD(lr=learning_rate, momentum=0.95, nesterov=True)
         
-    elif cfg.MODEL.OPTIMIZER.lower() == "adam":
-        optim = tf.keras.optimizers.Adam(lr=cfg.TRAIN.LR)
+    elif optimizer.lower() == "adam":
+        optim = tf.keras.optimizers.Adam(lr=learning_rate)
         
     else:
-        raise(AssertionError("Optimizer: %s not found" % (cfg.MODEL.OPTIMIZER)) )
+        raise(AssertionError("Optimizer: %s not found" % (optimizer)) )
     
     return optim
