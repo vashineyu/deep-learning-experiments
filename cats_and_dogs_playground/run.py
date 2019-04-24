@@ -33,9 +33,12 @@ args = parser.parse_args()
 
 def main():
     from config import get_cfg_defaults
+    from augment import Augmentation_Setup
+    from data_generator import GetDataset, Customized_dataloader
+    from model import build_model, preproc, make_optimizer
     cfg = get_cfg_defaults()
     if args.config_file is not None:
-    cfg.merge_from_file(args.config_file)
+        cfg.merge_from_file(args.config_file)
     if args.opts is not None:
         cfg.merge_from_list(args.opts)
     cfg.freeze()
@@ -141,22 +144,6 @@ def main():
     result_df.to_csv(os.path.join("results", "exp_" + cfg.SYSTEM.NAME_FLAG + "_result.csv"), index=False)
     print("All Done")
     
-class Augmentation_Setup(object):  
-    sometimes = lambda aug: iaa.Sometimes(0.5, aug)
-    lesstimes = lambda aug: iaa.Sometimes(0.2, aug)
-    augmentation = iaa.Sequential([
-        iaa.Fliplr(0.5, name="FlipLR"),
-        iaa.Flipud(0.5, name="FlipUD"),
-        iaa.OneOf([iaa.Affine(rotate=90),
-                   iaa.Affine(rotate=180),
-                   iaa.Affine(rotate=270)]),
-        sometimes(iaa.Affine(
-                    scale=(0.8,1.2),
-                    translate_percent=(-0.2, 0.2),
-                    rotate=(-15, 15),
-                    mode="wrap"
-                    ))
-    ])
     
 if __name__ == '__main__':
     main()

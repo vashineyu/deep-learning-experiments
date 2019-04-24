@@ -1,5 +1,7 @@
+import sys
 import tensorflow as tf
-from backbone import *
+sys.path.append("/mnt/deep-learning/usr/seanyu/lab_mldl_tools")
+from models.tf_resnet.model import *
 
 graph_mapping = {
     "R-50-v1":ResNet50,
