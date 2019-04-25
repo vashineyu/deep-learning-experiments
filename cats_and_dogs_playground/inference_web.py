@@ -8,11 +8,11 @@ from tensorflow.python.keras.utils import multi_gpu_model as to_multi_gpu
 import tensorflow as tf
 import numpy as np
 
-from train.dataloader import GetDataset
-from train.model import preproc_resnet as preproc_fn
-from train.utils import try_makedirs, check_cfg
-from inference.config import get_cfg_defaults
-from inference.utils import update_json_dictionary, make_single_rendering_dict
+from .train.dataloader import GetDataset
+from .train.model import preproc_resnet as preproc_fn
+from .train.utils import try_makedirs, check_cfg
+from .inference.config import get_cfg_defaults
+from .inference.utils import update_json_dictionary, make_single_rendering_dict
 ### Main functions ###
 def run(cfg_object, model=None):
     """
