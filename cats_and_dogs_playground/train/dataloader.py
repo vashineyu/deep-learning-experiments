@@ -33,9 +33,10 @@ class GetDataset():
 
         ## Init ##
         self.datalist = [item for key in datapath_map for item in datapath_map[key]]
-        self.classlist = [key for key in datapath_map for _ in datapath_map[key]]
+        if classid_map is not None:
+            self.classlist = [key for key in datapath_map for _ in datapath_map[key]]
+            self._shuffle_item()
         self.current_index = 0
-        self._shuffle_item()
 
     def __len__(self):
         return len(self.datalist)
@@ -43,7 +44,8 @@ class GetDataset():
     def __getitem__(self, idx):
         w, h, *_ = self.image_size
         image = self.load_image(img_path=self.datalist[idx], image_size=(w, h))
-        label = to_categorical(self.class_map[self.classlist[idx]], len(self.class_map))
+        if self.class_map is not None:
+            label = to_categorical(self.class_map[self.classlist[idx]], len(self.class_map))
         
         if self.augment_fn is not None:
             image = self.augment_fn.augment_image(image)
@@ -53,10 +55,13 @@ class GetDataset():
             image = self.preproc_fn(image)
 
         self.current_index = (self.current_index + 1) % len(self.datalist)
-        if (self.current_index == 0) & (self.do_shuffle):
+        if (self.current_index == 0) & (self.do_shuffle) & (self.class_map is not None):
             self._shuffle_item()
 
-        return image, label
+        if self.class_map is not None:
+            return image, label
+        else:
+            return image
     
     def __next__(self):
         return self.__getitem__(idx=self.current_index)
