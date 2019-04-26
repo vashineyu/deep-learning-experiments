@@ -28,7 +28,8 @@ def run(cfg, model=None):
     if model is None:
         devices = list_devices_to_string(cfg.SYSTEM.DEVICE)
         set_device(devices)
-        model = load_model(cfg.MODEL.ROOT_PATH)
+        model_path = os.path.join(cfg.MODEL.ROOT_PATH, "model.h5")
+        model = load_model(model_path)
 
     """
     Create inference dataset

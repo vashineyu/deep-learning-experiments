@@ -44,7 +44,8 @@ def run(cfg_object, model=None):
     if model is None:
         devices = list_devices_to_string(cfg.SYSTEM.DEVICE)
         set_device(devices)
-        model = load_model(cfg.MODEL.ROOT_PATH)
+        model_path = os.path.join(cfg.MODEL.ROOT_PATH, "model.h5")
+        model = load_model(model_path)
 
     """
     Create inference dataset
@@ -137,7 +138,7 @@ if __name__ == "__main__":
     test_config = {
         "SYSTEM.DEVICE": [],
         "SOURCE.TARGET_FILES": ["/mnt/nas/testcase_data/natural_image_01.jpg"],
-        "MODEL.ROOT_PATH": "/data/seanyu/test/catdog_test/model.h5",
+        "MODEL.ROOT_PATH": "/data/seanyu/test/catdog_test",
         "SOURCE.RESULT_DIR": "/data/seanyu/test/catdog_test/outputs"
     }
 
