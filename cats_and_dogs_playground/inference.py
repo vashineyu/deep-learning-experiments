@@ -63,7 +63,7 @@ def run(cfg, model=None):
                                                class_reference_table=classmap,
                                                path_to_cam=""
                                                )
-        #print(json_item)
+        print(json_item)
         update_json_dictionary(json_filepath, json_item)
 
 

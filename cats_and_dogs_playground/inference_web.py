@@ -79,7 +79,7 @@ def run(cfg_object, model=None):
                                                class_reference_table=classmap,
                                                path_to_cam=""
                                                )
-        update_json_dictionary(json_filepath, json_item)
+        json_item = update_json_dictionary(json_filepath, json_item)
 
     return json_item
 
@@ -137,7 +137,8 @@ if __name__ == "__main__":
 
     test_config = {
         "SYSTEM.DEVICE": [],
-        "SOURCE.TARGET_FILES": ["/mnt/nas/testcase_data/natural_image_01.jpg"],
+        "SOURCE.TARGET_FILES": ["/mnt/nas/testcase_data/natural_image_01.jpg",
+                                "https://cdn1.medicalnewstoday.com/content/images/articles/322/322868/golden-retriever-puppy.jpg"],
         "MODEL.ROOT_PATH": "/data/seanyu/test/catdog_test",
         "SOURCE.RESULT_DIR": "/data/seanyu/test/catdog_test/outputs"
     }
