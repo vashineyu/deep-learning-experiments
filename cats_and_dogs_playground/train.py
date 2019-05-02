@@ -96,7 +96,7 @@ def main():
     try_makedirs(cfg.SOURCE.RESULT_DIR)
     model.fit_generator(dataloader,
                         epochs=cfg.MODEL.EPOCHS,
-                        steps_per_epoch=cfg.MODEL.NUM_UPDATES,
+                        steps_per_epoch=len(dataloader) if cfg.MODEL.NUM_UPDATES == 0 else cfg.MODEL.NUM_UPDATES,
                         validation_data=(x_val, y_val),
                         callbacks=cb_list
                         )

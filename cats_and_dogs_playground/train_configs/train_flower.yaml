@@ -6,5 +6,7 @@ DATASET:
   IMAGE_SIZE: (128, 128, 3)
   TARGET_REFERENCE: ("daisy", 0), ("dandelion", 1), ("rose", 2), ("sunflower", 3), ("tulip", 4)
 MODEL:
+  BACKBONE: "R-50-xt"
   BATCH_SIZE: 64
+  NUM_UPDATES: 0
   
