@@ -42,7 +42,10 @@ def main():
     dict_image_valid = {}
     for key in dict_target.keys():
         dict_image_train[key] = fetch_path_from_dirs(cfg.DATASET.TRAIN_DIR, key=key)
-        dict_image_valid[key] = fetch_path_from_dirs(cfg.DATASET.VALID_DIR, key=key)
+        if len(cfg.DATASET.VALID_DIR) == 0:
+            dict_image_train[key], dict_image_valid[key] = train_test_split(dict_image_train[key], test_size=(1-cfg.DATASET.TRAIN_RATIO))
+        else:
+            dict_image_valid[key] = fetch_path_from_dirs(cfg.DATASET.VALID_DIR, key=key)
 
     dataset_train = GetDataset(datapath_map=dict_image_train,
                                classid_map=dict_target,
@@ -71,7 +74,9 @@ def main():
     print(y_val.sum(axis=0))
 
 
-    model = build_model(backbone=cfg.MODEL.BACKBONE, 
+    model = build_model(input_shape=cfg.DATASET.IMAGE_SIZE,
+                        num_classes=len(dict_target),
+                        backbone=cfg.MODEL.BACKBONE, 
                         norm_use=cfg.MODEL.NORM_USE,
                         weights="imagenet" if cfg.MODEL.USE_PRETRAIN else None)
     optim = make_optimizer(optimizer=cfg.MODEL.OPTIMIZER, learning_rate=cfg.MODEL.LEARNING_RATE)

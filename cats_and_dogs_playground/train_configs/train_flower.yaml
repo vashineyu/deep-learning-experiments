@@ -1,0 +1,10 @@
+SOURCE:
+  RESULT_DIR: "/data/seanyu/cupoy/flower"
+DATASET:
+  TRAIN_DIR: ["/data/seanyu/cupoy/flower/train"]
+  VALID_DIR: []
+  IMAGE_SIZE: (128, 128, 3)
+  TARGET_REFERENCE: ("daisy", 0), ("dandelion", 1), ("rose", 2), ("sunflower", 3), ("tulip", 4)
+MODEL:
+  BATCH_SIZE: 64
+  
