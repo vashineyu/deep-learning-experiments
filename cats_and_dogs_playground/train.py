@@ -31,6 +31,13 @@ def main():
     cfg.freeze()
     print(cfg)
     check_cfg(cfg)
+    if cfg.SYSTEM.USE_HOROVOD:
+        import horovod.tensorflow.keras as hvd
+        hvd.init()
+        tf_config = tf.ConfigProto()
+        tf_config.gpu_options.visible_device_list = str(hvd.local_rank())  # horovod
+        session = tf.Session(config=tf_config)
+        tf.keras.backend.set_session(session)
 
     device = ','.join(str(i) for i in cfg.SYSTEM.DEVICES)
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
@@ -85,14 +92,28 @@ def main():
                   metrics=["accuracy"], 
                   optimizer=optim)
     model.summary()
-    cb_list = [tf.keras.callbacks.ReduceLROnPlateau(factor=0.5,
+    cb_list = []
+
+    if cfg.SYSTEM.USE_HOROVOD:
+        cb_list.append(hvd.callbacks.BroadcastGlobalVariablesCallback(0))
+        cb_list.append(hvd.callbacks.MetricAverageCallback())
+        cb_list.append(hvd.callbacks.LearningRateWarmupCallback(warmup_epochs=5, verbose=1))
+
+    cb_list.append(tf.keras.callbacks.ReduceLROnPlateau(factor=0.5,
                                                     patience=4,
-                                                    min_lr=1e-12),
-               tf.keras.callbacks.ModelCheckpoint(filepath=os.path.join(cfg.SOURCE.RESULT_DIR, "model.h5"),
-                                                  monitor="val_loss",
-                                                  save_best_only=True),
-               tf.keras.callbacks.TensorBoard(log_dir=os.path.join(cfg.SOURCE.RESULT_DIR, "logs"))
-               ]
+                                                    min_lr=1e-12))
+    if cfg.SYSTEM.USE_HOROVOD:
+        if hvd.rank() == 0:
+            cb_list.append(tf.keras.callbacks.ModelCheckpoint(filepath=os.path.join(cfg.SOURCE.RESULT_DIR, "model.h5"),
+                                                              monitor="val_loss",
+                                                              save_best_only=True))
+            cb_list.append(tf.keras.callbacks.TensorBoard(log_dir=os.path.join(cfg.SOURCE.RESULT_DIR, "logs")))
+    else:
+        cb_list.append(tf.keras.callbacks.ModelCheckpoint(filepath=os.path.join(cfg.SOURCE.RESULT_DIR, "model.h5"),
+                                                          monitor="val_loss",
+                                                          save_best_only=True))
+        cb_list.append(tf.keras.callbacks.TensorBoard(log_dir=os.path.join(cfg.SOURCE.RESULT_DIR, "logs")))
+
     try_makedirs(cfg.SOURCE.RESULT_DIR)
     model.fit_generator(dataloader,
                         epochs=cfg.MODEL.EPOCHS,

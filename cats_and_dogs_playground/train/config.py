@@ -3,6 +3,7 @@ from yacs.config import CfgNode as CN
 _C = CN() # Node, lv0
 _C.SYSTEM = CN() # None, lv1
 _C.SYSTEM.DEVICES = []
+_C.SYSTEM.USE_HOROVOD = False
 
 _C.SOURCE = CN()
 _C.SOURCE.RESULT_DIR = "" # Full path to store the result
