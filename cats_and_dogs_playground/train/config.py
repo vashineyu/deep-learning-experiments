@@ -3,14 +3,13 @@ from yacs.config import CfgNode as CN
 _C = CN() # Node, lv0
 _C.SYSTEM = CN() # None, lv1
 _C.SYSTEM.DEVICES = []
-_C.SYSTEM.USE_HOROVOD = False
 
 _C.SOURCE = CN()
 _C.SOURCE.RESULT_DIR = "" # Full path to store the result
 
 _C.DATASET = CN()
-_C.DATASET.TRAIN_DIR = ["/mnt/dataset/experiment/cat_dog/train/training"]
-_C.DATASET.VALID_DIR = ["/mnt/dataset/experiment/cat_dog/train/valid"]
+_C.DATASET.TRAIN_DIR = ["/mnt/extension/experiment/cat_dog/train/training"]
+_C.DATASET.VALID_DIR = ["/mnt/extension/experiment/cat_dog/train/valid"]
 _C.DATASET.TRAIN_RATIO = 0.9 # if VALID_DIR is [], then it works
 _C.DATASET.IMAGE_SIZE = (256, 256, 3)
 _C.DATASET.TARGET_REFERENCE = [
