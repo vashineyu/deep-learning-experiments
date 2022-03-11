@@ -4,6 +4,6 @@ matplotlib==3.0.3
 pandas==0.24.2
 scipy==1.2.1
 yacs==0.1.6
-Pillow==5.4.1
+Pillow==9.0.1
 opencv-python-headless==3.4.5.20
 requests>=2.20.0
