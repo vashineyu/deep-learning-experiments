@@ -1,0 +1,30 @@
+[tool.poetry]
+name = "cats_and_dogs_playground"
+version = "0.1.0"
+description = ""
+authors = ["seanyu <seanyu@aetherai.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.7"
+numpy = "^1.16.2"
+pandas = "*"
+scipy = "*"
+tensorflow-gpu = "^1.12.0"
+yacs = "*"
+Pillow = "*"
+opencv-python-headless = "^3.4.5.20"
+requests = "*"
+matplotlib = "*"
+scikit-learn = "*"
+horovod = "*"
+tqdm = "*"
+
+[tool.poetry.dev-dependencies]
+flake8 = "*"
+isort = "*"
+ipython = "*"
+ipykernel = "*"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
