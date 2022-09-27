@@ -4,7 +4,7 @@ from yacs.config import CfgNode as CN
 _C = CN()
 _C.SYSTEM = CN()
 _C.SYSTEM.DEVICE = []
-_C.SYSTEM.NUM_WORKERS = 4 # per gpu
+_C.SYSTEM.NUM_WORKERS = 4  # per gpu
 
 _C.MODEL = CN()
 # PATH to the model.h5 directory
@@ -15,9 +15,9 @@ _C.SOURCE = CN()
 _C.SOURCE.RESULT_DIR = ""
 # Files to run
 _C.SOURCE.TARGET_FILES = [
-    "/mnt/nas/testcase_data/natural_image_01.jpg", # cat
-    "/mnt/nas/testcase_data/natural_image_02.jpg", # cat
-    "/mnt/nas/testcase_data/natural_image_03.jpg", # cat
+    "/mnt/nas/testcase_data/natural_image_01.jpg",  # cat
+    "/mnt/nas/testcase_data/natural_image_02.jpg",  # cat
+    "/mnt/nas/testcase_data/natural_image_03.jpg",  # cat
 ]
 _C.SOURCE.EXTENSION = ".jpg"
 
@@ -30,8 +30,8 @@ _C.DATASET.TARGET_REFERENCE = [
 ]
 
 _C.INFERENCE = CN()
-_C.INFERENCE.BATCH_SIZE = 512 # per gpu
-_C.INFERENCE.SAVE_JSON = 0 # True should be 1
+_C.INFERENCE.BATCH_SIZE = 512  # per gpu
+_C.INFERENCE.SAVE_JSON = 0  # True should be 1
 
 
 def get_cfg_defaults():

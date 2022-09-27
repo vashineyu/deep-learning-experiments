@@ -1,0 +1,39 @@
+[tool.poetry]
+name = "cats_and_dogs_playground"
+version = "0.1.0"
+description = ""
+authors = ["seanyu <seanyu@aetherai.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.7"
+numpy = "*"
+scipy = "*"
+yacs = "*"
+Pillow = "*"
+opencv-python = "^3.4.5.20"
+requests = "*"
+matplotlib = "*"
+scikit-learn = "*"
+tqdm = "*"
+mpi4py = "*"
+imgaug = "*"
+
+[tool.poetry.dev-dependencies]
+flake8 = "*"
+isort = "*"
+ipython = "*"
+ipykernel = "*"
+poethepoet = "*"
+
+[tool.poe.tasks]
+install-tensorflow = "python -m pip install tensorflow-gpu==1.15.1"
+install-horovod.cmd = "python -m pip install horovod --no-cache-dir"
+install-horovod.env = {HOROVOD_WITH_TENSORFLOW = "1"}
+install-dl-framework = [
+    "install-horovod",
+    "install-tensorflow",
+]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

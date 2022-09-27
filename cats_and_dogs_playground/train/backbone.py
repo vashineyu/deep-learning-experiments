@@ -1,19 +1,18 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-import tensorflow as tf
-from tensorflow.keras.layers import Layer, InputSpec
-from tensorflow.keras import initializers, regularizers, constraints
-from tensorflow.keras.utils import get_custom_objects
-import tensorflow.keras.backend as K
+from __future__ import absolute_import, division, print_function
 
 import os
 import warnings
+import typing as t
+
+import tensorflow as tf
+import tensorflow.keras.backend as K
 import tensorflow.keras.backend as backend
 import tensorflow.keras.layers as layers
 import tensorflow.keras.models as models
-import tensorflow.keras.utils as keras_utils
+from tensorflow.keras import (constraints, initializers, keras_utils,
+                              regularizers)
+from tensorflow.keras.layers import InputSpec, Layer
+from tensorflow.keras.utils import get_custom_objects
 
 BASE_WEIGHTS_PATH = (
     'https://github.com/keras-team/keras-applications/'
@@ -37,13 +36,21 @@ WEIGHTS_HASHES = {
                    '0f678c91647380debd923963594981b3')
 }
 
+
 def set_custom_objects():
     get_custom_objects().update({'GroupNorm': GroupNorm})
     return True
 
-### ----------------- ###
-def block1(x, filters, kernel_size=3, stride=1,
-           conv_shortcut=True, name=None, norm_use="bn"):
+
+def block1(
+    x,
+    filters,
+    kernel_size=3,
+    stride=1,
+    conv_shortcut=True,
+    name='',
+    norm_use="bn"
+):
     """A residual block.
     # Arguments
         x: input tensor.
@@ -56,37 +63,55 @@ def block1(x, filters, kernel_size=3, stride=1,
     # Returns
         Output tensor for the residual block.
     """
-    bn_axis = 3 if backend.image_data_format() == 'channels_last' else 1
-
     if conv_shortcut is True:
-        shortcut = layers.Conv2D(4 * filters, 1, strides=stride, kernel_initializer='he_normal',
-                                 name=name + '_0_conv')(x)
-        shortcut = normalize_layer(shortcut, norm_use=norm_use, name=name+'_0_')
-        #shortcut = layers.BatchNormalization(axis=bn_axis, epsilon=1.001e-5, name=name + '_0_bn')(shortcut)
+        shortcut = layers.Conv2D(
+            4 * filters,
+            1,
+            strides=stride,
+            kernel_initializer='he_normal',
+            name=name + '_0_conv',
+        )(x)
+        shortcut = normalize_layer(
+            shortcut,
+            norm_use=norm_use,
+            name=name + '_0_',
+        )
     else:
         shortcut = x
 
-    x = layers.Conv2D(filters, 1, strides=stride, name=name + '_1_conv', kernel_initializer='he_normal')(x)
-    #x = layers.BatchNormalization(axis=bn_axis, epsilon=1.001e-5, name=name + '_1_bn')(x)
-    x = normalize_layer(x, norm_use=norm_use, name=name+'_1_')
+    x = layers.Conv2D(
+        filters,
+        1,
+        strides=stride,
+        name=name + '_1_conv',
+        kernel_initializer='he_normal',
+    )(x)
+    x = normalize_layer(x, norm_use=norm_use, name=name + '_1_')
     x = layers.Activation('relu', name=name + '_1_relu')(x)
 
-    x = layers.Conv2D(filters, kernel_size, padding='SAME', kernel_initializer='he_normal',
-                      name=name + '_2_conv')(x)
+    x = layers.Conv2D(
+        filters,
+        kernel_size,
+        padding='SAME',
+        kernel_initializer='he_normal',
+        name=name + '_2_conv'
+    )(x)
     x = normalize_layer(x, norm_use=norm_use, name=name+'_2_')
-    #x = layers.BatchNormalization(axis=bn_axis, epsilon=1.001e-5, name=name + '_2_bn')(x)
     x = layers.Activation('relu', name=name + '_2_relu')(x)
 
-    x = layers.Conv2D(4 * filters, 1, name=name + '_3_conv', kernel_initializer='he_normal')(x)
-    x = normalize_layer(x, norm_use=norm_use, name=name+'_3_')
-    #x = layers.BatchNormalization(axis=bn_axis, epsilon=1.001e-5, name=name + '_3_bn')(x)
+    x = layers.Conv2D(
+        4 * filters, 1,
+        name=name + '_3_conv',
+        kernel_initializer='he_normal'
+    )(x)
+    x = normalize_layer(x, norm_use=norm_use, name=name + '_3_')
 
     x = layers.Add(name=name + '_add')([shortcut, x])
     x = layers.Activation('relu', name=name + '_out')(x)
     return x
 
 
-def stack1(x, filters, blocks, stride1=2, name=None, norm_use="bn"):
+def stack1(x, filters, blocks, stride1=2, name='', norm_use="bn"):
     """A set of stacked residual blocks.
     # Arguments
         x: input tensor.
@@ -97,14 +122,28 @@ def stack1(x, filters, blocks, stride1=2, name=None, norm_use="bn"):
     # Returns
         Output tensor for the stacked blocks.
     """
-    x = block1(x, filters, stride=stride1, name=name + '_block1', norm_use=norm_use)
+    x = block1(
+        x=x,
+        filters=filters,
+        stride=stride1,
+        name=name + '_block1',
+        norm_use=norm_use,
+    )
     for i in range(2, blocks + 1):
         x = block1(x, filters, conv_shortcut=False, name=name + '_block' + str(i), norm_use=norm_use)
+
     return x
 
 
-def block2(x, filters, kernel_size=3, stride=1,
-           conv_shortcut=False, name=None, norm_use="bn"):
+def block2(
+    x,
+    filters,
+    kernel_size=3,
+    stride=1,
+    conv_shortcut=False,
+    name='',
+    norm_use="bn"
+):
     """A residual block.
     # Arguments
         x: input tensor.
@@ -117,37 +156,54 @@ def block2(x, filters, kernel_size=3, stride=1,
     # Returns
         Output tensor for the residual block.
     """
-    bn_axis = 3 if backend.image_data_format() == 'channels_last' else 1
-
-    #preact = layers.BatchNormalization(axis=bn_axis, epsilon=1.001e-5, name=name + '_preact_bn')(x)
-    preact = normalize_layer(x, norm_use=norm_use, name=name+'_preact_')
+    preact = normalize_layer(x, norm_use=norm_use, name=name + '_preact_')
     preact = layers.Activation('relu', name=name + '_preact_relu')(preact)
 
     if conv_shortcut is True:
-        shortcut = layers.Conv2D(4 * filters, 1, strides=stride, kernel_initializer='he_normal',
-                                 name=name + '_0_conv')(preact)
+        shortcut = layers.Conv2D(
+            4 * filters,
+            1,
+            strides=stride,
+            kernel_initializer='he_normal',
+            name=name + '_0_conv',
+        )(preact)
     else:
         shortcut = layers.MaxPooling2D(1, strides=stride)(x) if stride > 1 else x
 
-    x = layers.Conv2D(filters, 1, strides=1, use_bias=False, kernel_initializer='he_normal',
-                      name=name + '_1_conv')(preact)
-    x = normalize_layer(x, norm_use=norm_use, name=name+'_1_')
-    #x = layers.BatchNormalization(axis=bn_axis, epsilon=1.001e-5, name=name + '_1_bn')(x)
+    x = layers.Conv2D(
+        filters,
+        1,
+        strides=1,
+        use_bias=False,
+        kernel_initializer='he_normal',
+        name=name + '_1_conv',
+    )(preact)
+    x = normalize_layer(x, norm_use=norm_use, name=name + '_1_')
     x = layers.Activation('relu', name=name + '_1_relu')(x)
 
     x = layers.ZeroPadding2D(padding=((1, 1), (1, 1)), name=name + '_2_pad')(x)
-    x = layers.Conv2D(filters, kernel_size, strides=stride, kernel_initializer='he_normal',
-                      use_bias=False, name=name + '_2_conv')(x)
-    x = normalize_layer(x, norm_use=norm_use, name=name+'_2_')
-    #x = layers.BatchNormalization(axis=bn_axis, epsilon=1.001e-5, name=name + '_2_bn')(x)
+    x = layers.Conv2D(
+        filters,
+        kernel_size,
+        strides=stride,
+        kernel_initializer='he_normal',
+        use_bias=False,
+        name=name + '_2_conv'
+    )(x)
+    x = normalize_layer(x, norm_use=norm_use, name=name + '_2_')
     x = layers.Activation('relu', name=name + '_2_relu')(x)
 
-    x = layers.Conv2D(4 * filters, 1, name=name + '_3_conv', kernel_initializer='he_normal')(x)
+    x = layers.Conv2D(
+        4 * filters,
+        1,
+        name=name + '_3_conv',
+        kernel_initializer='he_normal'
+    )(x)
     x = layers.Add(name=name + '_out')([shortcut, x])
     return x
 
 
-def stack2(x, filters, blocks, stride1=2, name=None, norm_use="bn"):
+def stack2(x, filters, blocks, stride1=2, name='', norm_use="bn"):
     """A set of stacked residual blocks.
     # Arguments
         x: input tensor.
@@ -165,8 +221,16 @@ def stack2(x, filters, blocks, stride1=2, name=None, norm_use="bn"):
     return x
 
 
-def block3(x, filters, kernel_size=3, stride=1, groups=32,
-           conv_shortcut=True, name=None, norm_use="bn"):
+def block3(
+    x,
+    filters,
+    kernel_size=3,
+    stride=1,
+    groups=32,
+    conv_shortcut=True,
+    name='',
+    norm_use="bn",
+):
     """A residual block.
     # Arguments
         x: input tensor.
@@ -180,46 +244,60 @@ def block3(x, filters, kernel_size=3, stride=1, groups=32,
     # Returns
         Output tensor for the residual block.
     """
-    bn_axis = 3 if backend.image_data_format() == 'channels_last' else 1
-
     if conv_shortcut is True:
-        shortcut = layers.Conv2D((64 // groups) * filters, 1, strides=stride,
-                                 use_bias=False, name=name + '_0_conv')(x)
-        shortcut = normalize_layer(shortcut, norm_use=norm_use, name=name+'_0_')
-        #shortcut = layers.BatchNormalization(axis=bn_axis, epsilon=1.001e-5, name=name + '_0_bn')(shortcut)
+        shortcut = layers.Conv2D(
+            (64 // groups) * filters,
+            1,
+            strides=stride,
+            use_bias=False,
+            name=name + '_0_conv',
+        )(x)
+        shortcut = normalize_layer(shortcut, norm_use=norm_use, name=name + '_0_')
     else:
         shortcut = x
 
-    x = layers.Conv2D(filters, 1, use_bias=False, name=name + '_1_conv', kernel_initializer='he_normal')(x)
-    x = normalize_layer(x, norm_use=norm_use, name=name+'_1_')
-    #x = layers.BatchNormalization(axis=bn_axis, epsilon=1.001e-5, name=name + '_1_bn')(x)
+    x = layers.Conv2D(
+        filters,
+        1,
+        use_bias=False,
+        name=name + '_1_conv',
+        kernel_initializer='he_normal',
+    )(x)
+    x = normalize_layer(x, norm_use=norm_use, name=name + '_1_')
     x = layers.Activation('relu', name=name + '_1_relu')(x)
 
     c = filters // groups
     x = layers.ZeroPadding2D(padding=((1, 1), (1, 1)), name=name + '_2_pad')(x)
-    x = layers.DepthwiseConv2D(kernel_size, strides=stride, depth_multiplier=c,
-                               use_bias=False, name=name + '_2_conv', kernel_initializer='he_normal')(x)
+    x = layers.DepthwiseConv2D(
+        kernel_size,
+        strides=stride,
+        depth_multiplier=c,
+        use_bias=False,
+        name=name + '_2_conv',
+        kernel_initializer='he_normal',
+    )(x)
     x_shape = backend.int_shape(x)[1:-1]
     x = layers.Reshape(x_shape + (groups, c, c))(x)
     output_shape = x_shape + (groups, c) if backend.backend() == 'theano' else None
-    x = layers.Lambda(lambda x: sum([x[:, :, :, :, i] for i in range(c)]),
-                      output_shape=output_shape, name=name + '_2_reduce')(x)
-    x = layers.Reshape(x_shape + (filters,))(x)
-    x = normalize_layer(x, norm_use=norm_use, name=name+'_2_')
-    #x = layers.BatchNormalization(axis=bn_axis, epsilon=1.001e-5, name=name + '_2_bn')(x)
+    x = layers.Lambda(
+        lambda x: sum([x[:, :, :, :, i] for i in range(c)]),
+        output_shape=output_shape,
+        name=name + '_2_reduce',
+    )(x)
+    x = layers.Reshape(x_shape + (filters, ))(x)
+    x = normalize_layer(x, norm_use=norm_use, name=name + '_2_')
     x = layers.Activation('relu', name=name + '_2_relu')(x)
 
     x = layers.Conv2D((64 // groups) * filters, 1, kernel_initializer='he_normal',
                       use_bias=False, name=name + '_3_conv')(x)
-    x = normalize_layer(x, norm_use=norm_use, name=name+'_3_')
-    #x = layers.BatchNormalization(axis=bn_axis, epsilon=1.001e-5, name=name + '_3_bn')(x)
+    x = normalize_layer(x, norm_use=norm_use, name=name + '_3_')
 
     x = layers.Add(name=name + '_add')([shortcut, x])
     x = layers.Activation('relu', name=name + '_out')(x)
     return x
 
 
-def stack3(x, filters, blocks, stride1=2, groups=32, name=None, norm_use="bn"):
+def stack3(x, filters, blocks, stride1=2, groups=32, name='', norm_use="bn"):
     """A set of stacked residual blocks.
     # Arguments
         x: input tensor.
@@ -233,23 +311,31 @@ def stack3(x, filters, blocks, stride1=2, groups=32, name=None, norm_use="bn"):
     """
     x = block3(x, filters, stride=stride1, groups=groups, name=name + '_block1', norm_use=norm_use)
     for i in range(2, blocks + 1):
-        x = block3(x, filters, groups=groups, conv_shortcut=False,
-                   name=name + '_block' + str(i), norm_use=norm_use)
+        x = block3(
+            x,
+            filters,
+            groups=groups,
+            conv_shortcut=False,
+            name=name + '_block' + str(i),
+            norm_use=norm_use
+        )
     return x
 
 
-def ResNet(stack_fn,
-           preact,
-           use_bias,
-           model_name='resnet',
-           include_top=True,
-           weights='imagenet',
-           input_tensor=None,
-           input_shape=None,
-           pooling=None,
-           classes=1000,
-           norm_use="bn",
-           **kwargs):
+def ResNet(
+    stack_fn: t.Callable,
+    preact: bool,
+    use_bias: bool,
+    model_name: str = 'resnet',
+    include_top: bool = True,
+    weights: t.Optional[str] = 'imagenet',
+    input_tensor=None,
+    input_shape=None,
+    pooling: t.Optional[str] = None,
+    classes: int = 1000,
+    norm_use: str = "bn",
+    **kwargs
+):
     """Instantiates the ResNet, ResNetV2, and ResNeXt architecture.
     Optionally loads weights pre-trained on ImageNet.
     Note that the data format convention used by the model is
@@ -296,25 +382,31 @@ def ResNet(stack_fn,
             or invalid input shape.
     """
     global backend, layers, models, keras_utils
-    #backend, layers, models, keras_utils = get_submodules_from_kwargs(kwargs)
+    # backend, layers, models, keras_utils = get_submodules_from_kwargs(kwargs)
 
     if not (weights in {'imagenet', None} or os.path.exists(weights)):
-        raise ValueError('The `weights` argument should be either '
-                         '`None` (random initialization), `imagenet` '
-                         '(pre-training on ImageNet), '
-                         'or the path to the weights file to be loaded.')
+        raise ValueError(
+            'The `weights` argument should be either '
+            '`None` (random initialization), `imagenet` '
+            '(pre-training on ImageNet), '
+            'or the path to the weights file to be loaded.'
+        )
 
     if weights == 'imagenet' and include_top and classes != 1000:
-        raise ValueError('If using `weights` as `"imagenet"` with `include_top`'
-                         ' as true, `classes` should be 1000')
+        raise ValueError(
+            'If using `weights` as `"imagenet"` with `include_top`'
+            ' as true, `classes` should be 1000'
+        )
 
     # Determine proper input shape
-    input_shape = _obtain_input_shape(input_shape,
-                                      default_size=224,
-                                      min_size=32,
-                                      data_format=backend.image_data_format(),
-                                      require_flatten=include_top,
-                                      weights=weights)
+    input_shape = _obtain_input_shape(
+        input_shape,
+        default_size=224,
+        min_size=32,
+        data_format=backend.image_data_format(),
+        require_flatten=include_top,
+        weights=weights,
+    )
 
     if input_tensor is None:
         img_input = layers.Input(shape=input_shape)
@@ -324,14 +416,11 @@ def ResNet(stack_fn,
         else:
             img_input = input_tensor
 
-    bn_axis = 3 if backend.image_data_format() == 'channels_last' else 1
-
     x = layers.ZeroPadding2D(padding=((3, 3), (3, 3)), name='conv1_pad')(img_input)
     x = layers.Conv2D(64, 7, strides=2, use_bias=use_bias, name='conv1_conv', kernel_initializer='he_normal')(x)
 
     if preact is False:
         x = normalize_layer(x, norm_use=norm_use, name='conv1_')
-        #x = layers.BatchNormalization(axis=bn_axis, epsilon=1.001e-5, name='conv1_bn')(x)
         x = layers.Activation('relu', name='conv1_relu')(x)
 
     x = layers.ZeroPadding2D(padding=((1, 1), (1, 1)), name='pool1_pad')(x)
@@ -341,7 +430,6 @@ def ResNet(stack_fn,
 
     if preact is True:
         x = normalize_layer(x, norm_use=norm_use, name='post_')
-        #x = layers.BatchNormalization(axis=bn_axis, epsilon=1.001e-5, name='post_bn')(x)
         x = layers.Activation('relu', name='post_relu')(x)
 
     if include_top:
@@ -382,41 +470,56 @@ def ResNet(stack_fn,
     return model
 
 
-def ResNet50(include_top=True,
-             weights='imagenet',
-             input_tensor=None,
-             input_shape=None,
-             pooling=None,
-             classes=1000,
-             norm_use="bn",
-             **kwargs):
+def ResNet50(
+    include_top: bool = True,
+    weights: t.Optional[str] = 'imagenet',
+    input_tensor=None,
+    input_shape=None,
+    pooling=None,
+    classes=1000,
+    norm_use="bn",
+    **kwargs,
+):
     def stack_fn(x):
         x = stack1(x, 64, 3, stride1=1, name='conv2', norm_use=norm_use)
         x = stack1(x, 128, 4, name='conv3', norm_use=norm_use)
         x = stack1(x, 256, 6, name='conv4', norm_use=norm_use)
         x = stack1(x, 512, 3, name='conv5', norm_use=norm_use)
         return x
-    return ResNet(stack_fn, False, True, 'resnet50',
-                  include_top, weights,
-                  input_tensor, input_shape,
-                  pooling, classes, norm_use=norm_use,
-                  **kwargs)
+
+    return ResNet(
+        stack_fn,
+        False,
+        True,
+        'resnet50',
+        include_top,
+        weights,
+        input_tensor,
+        input_shape,
+        pooling,
+        classes,
+        norm_use=norm_use,
+        **kwargs,
+    )
 
 
-def ResNet101(include_top=True,
-              weights='imagenet',
-              input_tensor=None,
-              input_shape=None,
-              pooling=None,
-              classes=1000,
-              norm_use="bn",
-              **kwargs):
+def ResNet101(
+    include_top=True,
+    weights='imagenet',
+    input_tensor=None,
+    input_shape=None,
+    pooling=None,
+    classes=1000,
+    norm_use="bn",
+    **kwargs,
+):
     def stack_fn(x):
         x = stack1(x, 64, 3, stride1=1, name='conv2', norm_use=norm_use)
         x = stack1(x, 128, 4, name='conv3', norm_use=norm_use)
         x = stack1(x, 256, 23, name='conv4', norm_use=norm_use)
         x = stack1(x, 512, 3, name='conv5', norm_use=norm_use)
         return x
+
     return ResNet(stack_fn, False, True, 'resnet101',
                   include_top, weights,
                   input_tensor, input_shape,
@@ -424,14 +527,16 @@ def ResNet101(include_top=True,
                   **kwargs)
 
 
-def ResNet152(include_top=True,
-              weights='imagenet',
-              input_tensor=None,
-              input_shape=None,
-              pooling=None,
-              classes=1000,
-              norm_use="bn",
-              **kwargs):
+def ResNet152(
+    include_top=True,
+    weights='imagenet',
+    input_tensor=None,
+    input_shape=None,
+    pooling=None,
+    classes=1000,
+    norm_use="bn",
+    **kwargs,
+):
     def stack_fn(x):
         x = stack1(x, 64, 3, stride1=1, name='conv2', norm_use=norm_use)
         x = stack1(x, 128, 8, name='conv3', norm_use=norm_use)
@@ -445,14 +550,16 @@ def ResNet152(include_top=True,
                   **kwargs)
 
 
-def ResNet50V2(include_top=True,
-               weights='imagenet',
-               input_tensor=None,
-               input_shape=None,
-               pooling=None,
-               classes=1000,
-               norm_use="bn",
-               **kwargs):
+def ResNet50V2(
+    include_top=True,
+    weights='imagenet',
+    input_tensor=None,
+    input_shape=None,
+    pooling=None,
+    classes=1000,
+    norm_use="bn",
+    **kwargs,
+):
     def stack_fn(x):
         x = stack2(x, 64, 3, name='conv2', norm_use=norm_use)
         x = stack2(x, 128, 4, name='conv3', norm_use=norm_use)
@@ -466,14 +573,16 @@ def ResNet50V2(include_top=True,
                   **kwargs)
 
 
-def ResNet101V2(include_top=True,
-                weights='imagenet',
-                input_tensor=None,
-                input_shape=None,
-                pooling=None,
-                classes=1000,
-                norm_use="bn",
-                **kwargs):
+def ResNet101V2(
+    include_top=True,
+    weights='imagenet',
+    input_tensor=None,
+    input_shape=None,
+    pooling=None,
+    classes=1000,
+    norm_use="bn",
+    **kwargs,
+):
     def stack_fn(x):
         x = stack2(x, 64, 3, name='conv2', norm_use=norm_use)
         x = stack2(x, 128, 4, name='conv3', norm_use=norm_use)
@@ -487,14 +596,16 @@ def ResNet101V2(include_top=True,
                   **kwargs)
 
 
-def ResNet152V2(include_top=True,
-                weights='imagenet',
-                input_tensor=None,
-                input_shape=None,
-                pooling=None,
-                classes=1000,
-                norm_use="bn",
-                **kwargs):
+def ResNet152V2(
+    include_top=True,
+    weights='imagenet',
+    input_tensor=None,
+    input_shape=None,
+    pooling=None,
+    classes=1000,
+    norm_use="bn",
+    **kwargs,
+):
     def stack_fn(x):
         x = stack2(x, 64, 3, name='conv2', norm_use=norm_use)
         x = stack2(x, 128, 8, name='conv3', norm_use=norm_use)
@@ -508,14 +619,16 @@ def ResNet152V2(include_top=True,
                   **kwargs)
 
 
-def ResNeXt50(include_top=True,
-              weights='imagenet',
-              input_tensor=None,
-              input_shape=None,
-              pooling=None,
-              classes=1000,
-              norm_use="bn",
-              **kwargs):
+def ResNeXt50(
+    include_top=True,
+    weights='imagenet',
+    input_tensor=None,
+    input_shape=None,
+    pooling=None,
+    classes=1000,
+    norm_use="bn",
+    **kwargs,
+):
     def stack_fn(x):
         x = stack3(x, 128, 3, stride1=1, name='conv2', norm_use=norm_use)
         x = stack3(x, 256, 4, name='conv3', norm_use=norm_use)
@@ -529,14 +642,16 @@ def ResNeXt50(include_top=True,
                   **kwargs)
 
 
-def ResNeXt101(include_top=True,
-               weights='imagenet',
-               input_tensor=None,
-               input_shape=None,
-               pooling=None,
-               classes=1000,
-               norm_use="bn",
-               **kwargs):
+def ResNeXt101(
+    include_top=True,
+    weights='imagenet',
+    input_tensor=None,
+    input_shape=None,
+    pooling=None,
+    classes=1000,
+    norm_use="bn",
+    **kwargs,
+):
     def stack_fn(x):
         x = stack3(x, 128, 3, stride1=1, name='conv2', norm_use=norm_use)
         x = stack3(x, 256, 4, name='conv3', norm_use=norm_use)
@@ -548,6 +663,7 @@ def ResNeXt101(include_top=True,
                   input_tensor, input_shape,
                   pooling, classes, norm_use=norm_use,
                   **kwargs)
+
 
 class GroupNorm(Layer):
     '''Group normalization layer
@@ -585,19 +701,21 @@ class GroupNorm(Layer):
         - [Group Normalization](https://arxiv.org/abs/1803.08494)
     '''
 
-    def __init__(self,
-                 groups=32,
-                 axis=-1,
-                 epsilon=1e-8,
-                 center=True,
-                 scale=True,
-                 beta_initializer='zeros',
-                 gamma_initializer='ones',
-                 beta_regularizer=None,
-                 gamma_regularizer=None,
-                 beta_constraint=None,
-                 gamma_constraint=None,
-                 **kwargs):
+    def __init__(
+        self,
+        groups=32,
+        axis=-1,
+        epsilon=1e-8,
+        center=True,
+        scale=True,
+        beta_initializer='zeros',
+        gamma_initializer='ones',
+        beta_regularizer=None,
+        gamma_regularizer=None,
+        beta_constraint=None,
+        gamma_constraint=None,
+        **kwargs,
+    ):
         super(GroupNorm, self).__init__(**kwargs)
         self.supports_masking = True
         self.groups = groups
@@ -627,7 +745,7 @@ class GroupNorm(Layer):
             raise ValueError('Number of groups (' + str(self.groups) + ') must be a '
                              'multiple of the number of channels (' +
                              str(dim) + ').')
-            
+
         self.input_spec = InputSpec(ndim=len(input_shape),
                                     axes={self.axis: dim})
         shape = (dim,)
@@ -716,7 +834,8 @@ class GroupNorm(Layer):
 
     def compute_output_shape(self, input_shape):
         return input_shape
-    
+
+
 class InstanceNormalization(Layer):
     """Instance normalization layer.
     Normalize the activations of the previous layer at each step,
@@ -756,18 +875,20 @@ class InstanceNormalization(Layer):
         - [Instance Normalization: The Missing Ingredient for Fast Stylization](
         https://arxiv.org/abs/1607.08022)
     """
-    def __init__(self,
-                 axis=None,
-                 epsilon=1e-3,
-                 center=True,
-                 scale=True,
-                 beta_initializer='zeros',
-                 gamma_initializer='ones',
-                 beta_regularizer=None,
-                 gamma_regularizer=None,
-                 beta_constraint=None,
-                 gamma_constraint=None,
-                 **kwargs):
+    def __init__(
+        self,
+        axis=None,
+        epsilon=1e-3,
+        center=True,
+        scale=True,
+        beta_initializer='zeros',
+        gamma_initializer='ones',
+        beta_regularizer=None,
+        gamma_regularizer=None,
+        beta_constraint=None,
+        gamma_constraint=None,
+        **kwargs
+    ):
         super(InstanceNormalization, self).__init__(**kwargs)
         self.supports_masking = True
         self.axis = axis
@@ -797,24 +918,28 @@ class InstanceNormalization(Layer):
             shape = (input_shape[self.axis],)
 
         if self.scale:
-            self.gamma = self.add_weight(shape=shape,
-                                         name='gamma',
-                                         initializer=self.gamma_initializer,
-                                         regularizer=self.gamma_regularizer,
-                                         constraint=self.gamma_constraint)
+            self.gamma = self.add_weight(
+                shape=shape,
+                name='gamma',
+                initializer=self.gamma_initializer,
+                regularizer=self.gamma_regularizer,
+                constraint=self.gamma_constraint
+            )
         else:
             self.gamma = None
         if self.center:
-            self.beta = self.add_weight(shape=shape,
-                                        name='beta',
-                                        initializer=self.beta_initializer,
-                                        regularizer=self.beta_regularizer,
-                                        constraint=self.beta_constraint)
+            self.beta = self.add_weight(
+                shape=shape,
+                name='beta',
+                initializer=self.beta_initializer,
+                regularizer=self.beta_regularizer,
+                constraint=self.beta_constraint
+            )
         else:
             self.beta = None
         self.built = True
 
-    def call(self, inputs, training=None):
+    def call(self, inputs):
         input_shape = K.int_shape(inputs)
         reduction_axes = list(range(0, len(input_shape)))
 
@@ -855,7 +980,7 @@ class InstanceNormalization(Layer):
         base_config = super(InstanceNormalization, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
 
-    
+
 def normalize_layer(tensor, name, norm_use='bn'):
     """Setup desired normalization layer.
     # Arguments
@@ -867,23 +992,26 @@ def normalize_layer(tensor, name, norm_use='bn'):
         Output tensor for the block.
     """
     if norm_use == "gn":
-        x = GroupNorm(name=name+'gn', groups=32)(tensor)
+        x = GroupNorm(name=name + 'gn', groups=32)(tensor)
     elif norm_use == "bn":
-        x = tf.keras.layers.BatchNormalization(axis=-1, name=name+'bn', epsilon=1.001e-5)(tensor)
+        x = tf.keras.layers.BatchNormalization(axis=-1, name=name + 'bn', epsilon=1.001e-5)(tensor)
     elif norm_use == "rbn":
-        x = tf.keras.layers.BatchNormalization(axis=-1, name=name+'rbn', epsilon=1.001e-5, renorm=True)(tensor)
+        x = tf.keras.layers.BatchNormalization(axis=-1, name=name + 'rbn', epsilon=1.001e-5, renorm=True)(tensor)
     elif norm_use == "in":
-        x = InstanceNormalization(axis=-1, name=name+'in')(tensor)
+        x = InstanceNormalization(axis=-1, name=name + 'in')(tensor)
     else:
-        x = x
+        x = tensor
     return x
 
-def _obtain_input_shape(input_shape,
-                        default_size,
-                        min_size,
-                        data_format,
-                        require_flatten,
-                        weights=None):
+
+def _obtain_input_shape(
+    input_shape,
+    default_size,
+    min_size,
+    data_format,
+    require_flatten,
+    weights=None
+):
     """Internal utility to compute/validate a model's input shape.
     # Arguments
         input_shape: Either None (will return the default network input shape),
@@ -906,15 +1034,17 @@ def _obtain_input_shape(input_shape,
             if input_shape[0] not in {1, 3}:
                 warnings.warn(
                     'This model usually expects 1 or 3 input channels. '
-                    'However, it was passed an input_shape with ' +
-                    str(input_shape[0]) + ' input channels.')
+                    'However, it was passed an input_shape with '
+                    f'{str(input_shape[0])} input channels.'
+                )
             default_shape = (input_shape[0], default_size, default_size)
         else:
             if input_shape[-1] not in {1, 3}:
                 warnings.warn(
                     'This model usually expects 1 or 3 input channels. '
-                    'However, it was passed an input_shape with ' +
-                    str(input_shape[-1]) + ' input channels.')
+                    'However, it was passed an input_shape with '
+                    f'{str(input_shape[-1])} input channels.'
+                )
             default_shape = (default_size, default_size, input_shape[-1])
     else:
         if data_format == 'channels_first':
@@ -924,40 +1054,53 @@ def _obtain_input_shape(input_shape,
     if weights == 'imagenet' and require_flatten:
         if input_shape is not None:
             if input_shape != default_shape:
-                raise ValueError('When setting `include_top=True` '
-                                 'and loading `imagenet` weights, '
-                                 '`input_shape` should be ' +
-                                 str(default_shape) + '.')
+                raise ValueError(
+                    'When setting `include_top=True` '
+                    'and loading `imagenet` weights, '
+                    '`input_shape` should be '
+                    f'{str(default_shape)}.'
+                )
         return default_shape
     if input_shape:
         if data_format == 'channels_first':
             if input_shape is not None:
                 if len(input_shape) != 3:
                     raise ValueError(
-                        '`input_shape` must be a tuple of three integers.')
+                        '`input_shape` must be a tuple of three integers.'
+                    )
                 if input_shape[0] != 3 and weights == 'imagenet':
-                    raise ValueError('The input must have 3 channels; got '
-                                     '`input_shape=' + str(input_shape) + '`')
-                if ((input_shape[1] is not None and input_shape[1] < min_size) or
-                   (input_shape[2] is not None and input_shape[2] < min_size)):
-                    raise ValueError('Input size must be at least ' +
-                                     str(min_size) + 'x' + str(min_size) +
-                                     '; got `input_shape=' +
-                                     str(input_shape) + '`')
+                    raise ValueError(
+                        'The input must have 3 channels; got '
+                        f'`input_shape = {str(input_shape)} `'
+                    )
+                if (
+                    (input_shape[1] is not None and input_shape[1] < min_size)
+                    or (input_shape[2] is not None and input_shape[2] < min_size)
+                ):
+                    raise ValueError(
+                        'Input size must be at least '
+                        f'{str(min_size)} + {str(min_size)}'
+                        f'; got `input_shape={str(input_shape)}'
+                    )
         else:
             if input_shape is not None:
                 if len(input_shape) != 3:
                     raise ValueError(
                         '`input_shape` must be a tuple of three integers.')
                 if input_shape[-1] != 3 and weights == 'imagenet':
-                    raise ValueError('The input must have 3 channels; got '
-                                     '`input_shape=' + str(input_shape) + '`')
-                if ((input_shape[0] is not None and input_shape[0] < min_size) or
-                   (input_shape[1] is not None and input_shape[1] < min_size)):
-                    raise ValueError('Input size must be at least ' +
-                                     str(min_size) + 'x' + str(min_size) +
-                                     '; got `input_shape=' +
-                                     str(input_shape) + '`')
+                    raise ValueError(
+                        'The input must have 3 channels; got '
+                        f'`input_shape = {str(input_shape)}`'
+                    )
+                if (
+                    (input_shape[0] is not None and input_shape[0] < min_size)
+                    or (input_shape[1] is not None and input_shape[1] < min_size)
+                ):
+                    raise ValueError(
+                        'Input size must be at least '
+                        f'{str(min_size)} x {str(min_size)}'
+                        f'; got input_shape = {str(input_shape)}'
+                    )
     else:
         if require_flatten:
             input_shape = default_shape
@@ -968,61 +1111,9 @@ def _obtain_input_shape(input_shape,
                 input_shape = (None, None, 3)
     if require_flatten:
         if None in input_shape:
-            raise ValueError('If `include_top` is True, '
-                             'you should specify a static `input_shape`. '
-                             'Got `input_shape=' + str(input_shape) + '`')
+            raise ValueError(
+                'If `include_top` is True, '
+                'you should specify a static `input_shape`. '
+                'Got `input_shape=' + str(input_shape) + '`'
+            )
     return input_shape
-
-## Test call ##
-if __name__ == '__main__':
-    import os
-    import tensorflow as tf
-    import numpy as np
-    os.environ['CUDA_VISIBLE_DEVICES'] = "" # Make sure that this gpu-id is avaiable when testing
-    
-    """
-    Example to use the graph
-    """
-    pretrain_modules = ResNeXt50(include_top=False, input_shape=(128,128,3), norm_use="gn", weights='imagenet')
-    gap = tf.keras.layers.GlobalAveragePooling2D()(pretrain_modules.output)
-    logit = tf.keras.layers.Dense(units=2, name="logit")(gap)
-    out = tf.keras.layers.Activation("softmax", name="output")(logit)
-    
-    model = tf.keras.Model(inputs=[pretrain_modules.input], outputs=[out])
-    model.compile(loss="categorical_crossentropy", optimizer=tf.keras.optimizers.Adam(lr=0.001), metrics=['accuracy'])
-    model.summary()
-    
-    arr_x = np.random.random((100, 128, 128, 3))
-    arr_y = tf.keras.utils.to_categorical(np.random.choice([0, 1], 100), num_classes=2)
-    print("Data input: %s, GT input: %s" % (arr_x.shape, arr_y.shape))
-
-    model.fit(arr_x, arr_y, epochs=2, batch_size=12)
-    model.save("tmp.h5")
-    print("Model saved!")
-    
-    tf.keras.backend.clear_session()
-    del model
-    set_custom_objects()
-    model = tf.keras.models.load_model("tmp.h5")
-    y_pred = model.predict(arr_x, verbose=1)
-    print("Model load back successful")
-    
-    os.remove("tmp.h5")
-    print("Test complete, tmp model removed")
-
-    """ If you want to use sess.run """
-    y_holder = tf.keras.layers.Input([2], name='y_holder') # shape = (None, 2)
-    loss = tf.losses.softmax_cross_entropy(logits=model.get_layer('logit').output, onehot_labels=y_holder)
-    optimizer = tf.train.AdamOptimizer(learning_rate=0.001)
-    update_op = optimizer.minimize(loss)
-
-    idx = 0
-    with tf.Session() as sess:
-        sess.run(tf.global_variables_initializer())
-        for i in range(100 % 12):
-            batch_x, batch_y = arr_x[(idx*12):((idx+1)*12)], arr_y[(idx*12):((idx+1)*12)]
-            
-            l, _ = sess.run([loss, update_op], feed_dict={model.input:batch_x, y_holder:batch_y})
-            
-            print("iter: %i, l: %.3f" % (i, l))
-    print("sess.run method complete")

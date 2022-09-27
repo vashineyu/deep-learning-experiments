@@ -1,25 +1,21 @@
 """utils.py
 Related util functions
 """
-import os
 import glob
+import os
 import time
+import typing as t
+
 from tensorflow.python.keras.callbacks import Callback
+
 
 def check_cfg(cfg):
     if cfg.SOURCE.RESULT_DIR == "":
-        assert False, "SOURCE.RESULT_DIR should not be empty string"
-
+        ValueError("SOURCE.RESULT_DIR should not be empty string")
     return True
 
-def try_makedirs(path):
-    try:
-        os.makedirs(path)
-    except:
-        pass
-    return True
 
-def fetch_path_from_dirs(list_of_search_dirs, key, image_format="jpg"):
+def fetch_path_from_dirs(list_of_search_dirs, key):
     """list all files in list of dirs
 
     Args:
@@ -33,9 +29,9 @@ def fetch_path_from_dirs(list_of_search_dirs, key, image_format="jpg"):
     outputs = []
     for d in list_of_search_dirs:
         this_search_path = os.path.join(d, "*" + key + "*")
-        #this_search_path = os.path.join(d, "*"+key+"*"+image_format)
         outputs.extend(glob.glob(this_search_path))
     return outputs
+
 
 class Timer(Callback):
     """Time recording
@@ -49,16 +45,18 @@ class Timer(Callback):
     model_timer.timer --> dict of time recording
     """
 
-    def __init__(self, record_batch_per_period=1):
+    def __init__(self, record_batch_per_period: int = 1):
         self.record_batch_per_period = record_batch_per_period
 
     def on_train_begin(self, logs={}):
-        self.timer = {"train_start": time.time(),
-                      "train_end"  : -1,
-                      "epoch_start": [],
-                      "epoch_end"  : [],
-                      "batch_start": [],
-                      "batch_end"  : []}
+        self.timer = {
+            "train_start": time.time(),
+            "train_end": -1,
+            "epoch_start": [],
+            "epoch_end": [],
+            "batch_start": [],
+            "batch_end": [],
+        }
 
     def on_train_end(self, logs={}):
         self.timer["train_end"] = time.time()

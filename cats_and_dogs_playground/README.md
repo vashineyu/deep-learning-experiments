@@ -25,8 +25,4 @@ v201806, <br>
   1. Not an update, experiment on serveral interesting test.
    * Loss function comparison
 
----
-<TO DO>
-1. rebuild keras version
-2. build tf-estimator version
 
