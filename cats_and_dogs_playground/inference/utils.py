@@ -1,48 +1,57 @@
 import json
 import os
-import numpy as np
+import typing as t
+from pathlib import Path
 
-def _init_json_file(jfile, refresh=False):
+import numpy as np
+import numpy.typing as npt
+
+
+def _init_json_file(json_filepath: t.Union[str, Path], refresh: bool = False):
     def create_file():
-        with open(jfile, 'w') as f:
+        with open(json_filepath, 'w') as f:
             json.dump({}, f)
 
-    if os.path.exists(jfile):
+    if os.path.exists(json_filepath):
         if refresh:
             create_file()
     else:
         create_file()
 
-def update_json_dictionary(jfile, item):
+
+def update_json_dictionary(json_filepath: t.Union[str, Path], item: dict[str, t.Any]):
     try:
-        with open(jfile, 'r') as f:
+        with open(json_filepath, 'r') as f:
             json_object = json.load(f)
+
     except FileNotFoundError:
-        _init_json_file(jfile)
+        _init_json_file(json_filepath)
         json_object = {}
 
     json_object.update(item)
-    with open(jfile, 'w') as f:
+    with open(json_filepath, 'w') as f:
         json.dump(json_object, f)
 
     return json_object
 
-def make_single_rendering_dict(filename,
-                               pred_array,
-                               class_reference_table,
-                               path_to_cam=''):
-    keyname = os.path.basename(filename).split(".")[:-1][0]
+
+def make_single_rendering_dict(
+    filename: t.Union[str, Path],
+    pred_array: npt.NDArray,
+    class_reference_table: list,
+    path_to_cam: str = '',
+):
+    category = Path(filename).stem.split('.')[0]
     x = ','.join("{:4f}".format(i) for i in pred_array)
 
-    #assert len(pred_array) == 1, "Length of pred_array should be 1"
     pred_array_max = np.argmax(pred_array)
     item = {
-        keyname:{
-            "image_path":filename,
-            "pred_class":class_reference_table[pred_array_max],
-            "pred_value":str(pred_array[pred_array_max]),
-            "predictions":x,
-            "cam_path":path_to_cam
+        category: {
+            "image_path": filename,
+            "pred_class": class_reference_table[pred_array_max],
+            "pred_value": str(pred_array[pred_array_max]),
+            "predictions": x,
+            "cam_path": path_to_cam,
         }
     }
     return item

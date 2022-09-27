@@ -1,5 +1,6 @@
 import argparse
 import os
+import typing as t
 from pathlib import Path
 
 import numpy as np
@@ -92,17 +93,7 @@ def main():
         update_json_dictionary(json_filepath, json_item)
 
 
-def count_devices(devices):
-    """Count numbers of CUDA devices
-    Args:
-        devices (str): comma split string
-    Returns:
-        num_gpus (int): numbers of gpus
-    """
-    num_gpus = len(devices.split(","))
-    return num_gpus
-
-def load_model(model_path):
+def load_model(model_path: t.Union[str, Path]):
     """Load model
     Args:
         model_path: path to model
@@ -110,7 +101,7 @@ def load_model(model_path):
         model: model object
     """
     gpu_devices = os.environ.get("CUDA_VISIBLE_DEVICES")
-    num_gpus = count_devices(gpu_devices) if gpu_devices is not None else 0
+    num_gpus = len(gpu_devices.split(",")) if gpu_devices is not None else 0
     model = load_tfk_model(model_path)
     if num_gpus > 1:
         model = to_multi_gpu(
