@@ -19,6 +19,7 @@ from train.model import build_model, make_optimizer
 from train.model import preproc_resnet as preproc_fn
 from train.utils import Timer, check_cfg, fetch_path_from_dirs
 
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Cats/Dogs playground parameters")
     parser.add_argument(
@@ -48,9 +49,7 @@ if __name__ == '__main__':
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
     os.environ['CUDA_VISIBLE_DEVICES'] = device
 
-    """
     # Hovovod Setting
-    """
     hvd.init()
     tf_config = tf.ConfigProto()
 
@@ -59,13 +58,15 @@ if __name__ == '__main__':
     session = tf.Session(config=tf_config)
     tf.keras.backend.set_session(session)
 
-    """  Get data """
     dict_target = dict(cfg.DATASET.TARGET_REFERENCE)
     dict_image_train, dict_image_valid = {}, {}
     for key in dict_target.keys():
         dict_image_train[key] = fetch_path_from_dirs(cfg.DATASET.TRAIN_DIR, key=key)
         if len(cfg.DATASET.VALID_DIR) == 0:
-            dict_image_train[key], dict_image_valid[key] = train_test_split(dict_image_train[key], test_size=(1-cfg.DATASET.TRAIN_RATIO))
+            dict_image_train[key], dict_image_valid[key] = train_test_split(
+                dict_image_train[key],
+                test_size=(1 - cfg.DATASET.TRAIN_RATIO)
+            )
         else:
             dict_image_valid[key] = fetch_path_from_dirs(cfg.DATASET.VALID_DIR, key=key)
 
